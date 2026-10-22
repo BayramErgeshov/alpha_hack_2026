@@ -1,0 +1,45 @@
+{
+  "items": [
+    {
+      "city": "г. Москва",
+      "client_type": "CLIENT",
+      "foreign_trade": true,
+      "group_size": 369,
+      "id": "U_57706",
+      "industry": "Торговля оптовая твердым, жидким и газообразным топливом и подобными продуктами",
+      "industry_category": "Оптовая и розничная торговля",
+      "okved_code": "46.71",
+      "products": [
+        "rko",
+        "leasing",
+        "bank_guarantees",
+        "deposits"
+      ],
+      "region": "Москва",
+      "revenue_rub": 105596467908
+    },
+    {
+      "city": "г. Иркутск",
+      "client_type": "CLIENT",
+      "foreign_trade": true,
+      "group_size": 22,
+      "id": "U_9250",
+      "industry": "Строительство прочих инженерных сооружений, не включенных в другие группировки",
+      "industry_category": "Строительство",
+      "okved_code": "42.99",
+      "products": [
+        "rko",
+        "loans",
+        "leasing",
+        "bank_guarantees",
+        "salary_project"
+      ],
+      "region": "Иркутская область",
+      "revenue_rub": 62340483339
+    }
+  ],
+  "limit": 2,
+  "min_revenue_rub": 15000000000,
+  "offset": 0,
+  "total": 115
+}

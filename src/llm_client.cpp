@@ -39,6 +39,10 @@ std::string api_url(std::string base) {
 
 } // namespace
 
+bool llm_test_endpoint_enabled() {
+    return env("ALFA_LLM_TEST_ENDPOINT") == "1";
+}
+
 const std::vector<std::string>& allowed_llm_models() {
     static const std::vector<std::string> models = {
         "google/gemma-4-26b-a4b-it",
@@ -87,8 +91,9 @@ bool allowed_llm_base_url(const std::string& url) {
     const bool allowed_host = host_value == "changellenge.up.railway.app" || host_value == "api.alfahack-gateway26.ru";
     const bool allowed_path = path_value.empty() || path_value == "/" || path_value == "/v1" || path_value == "/v1/";
     const bool allowed_port = !has_port || port_value == "443";
-    return valid && scheme_value == "https" && allowed_host && allowed_path && allowed_port &&
-        !has_user && !has_password && !has_query && !has_fragment;
+    const bool clean = valid && allowed_path && !has_user && !has_password && !has_query && !has_fragment;
+    if (clean && llm_test_endpoint_enabled() && scheme_value == "http" && host_value == "127.0.0.1") return true;
+    return clean && scheme_value == "https" && allowed_host && allowed_port;
 }
 
 LlmConfig LlmConfig::from_environment() {
@@ -99,6 +104,10 @@ LlmConfig LlmConfig::from_environment() {
     if (config.api_key.empty()) config.api_key = env("OPENAI_API_KEY");
     config.model = env("ALFA_LLM_MODEL");
     if (config.model.empty()) config.model = "deepseek/deepseek-v4.1-flash";
+    config.fast_model = env("ALFA_LLM_MODEL_FAST");
+    if (config.fast_model.empty()) config.fast_model = "google/gemma-4-26b-a4b-it";
+    config.review_model = env("ALFA_LLM_MODEL_REVIEW");
+    if (config.review_model.empty()) config.review_model = "z-ai/glm-5.3-flash";
     const std::string timeout = env("ALFA_LLM_TIMEOUT_SECONDS");
     if (!timeout.empty()) {
         try { config.request_timeout_seconds = std::clamp(std::stoi(timeout), 5, 90); }
@@ -109,6 +118,13 @@ LlmConfig LlmConfig::from_environment() {
 
 LlmReply llm_chat(const LlmConfig& config, const std::string& system_prompt,
     const std::string& user_prompt, int max_tokens) {
+    return llm_chat_model(config, config.model, system_prompt, user_prompt, max_tokens);
+}
+
+LlmReply llm_chat_model(const LlmConfig& base_config, const std::string& model, const std::string& system_prompt,
+    const std::string& user_prompt, int max_tokens) {
+    LlmConfig config = base_config;
+    config.model = model;
     LlmReply reply;
     reply.model = config.model;
     if (!config.configured()) { reply.error = "LLM API key is not configured"; return reply; }
@@ -158,7 +174,8 @@ LlmReply llm_chat(const LlmConfig& config, const std::string& system_prompt,
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
     curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
-    curl_easy_setopt(curl, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS);
+    const bool plain_http_test = llm_test_endpoint_enabled() && config.base_url.rfind("http://127.0.0.1", 0) == 0;
+    curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, plain_http_test ? "http" : "https");
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "AlfaNewsBackend/0.1");
@@ -190,6 +207,13 @@ LlmReply llm_chat(const LlmConfig& config, const std::string& system_prompt,
             }
         }
         if (reply.content.empty()) { reply.error = "LLM gateway returned an empty message"; return reply; }
+        const json::Value& usage = root.get("usage");
+        reply.prompt_tokens = static_cast<long long>(usage.get("prompt_tokens").as_number());
+        reply.completion_tokens = static_cast<long long>(usage.get("completion_tokens").as_number());
+        if (reply.prompt_tokens <= 0 && reply.completion_tokens <= 0) {
+            reply.prompt_tokens = static_cast<long long>((system_prompt.size() + user_prompt.size()) / 3);
+            reply.completion_tokens = static_cast<long long>(reply.content.size() / 3);
+        }
         reply.ok = true;
         return reply;
     } catch (const std::exception& e) {

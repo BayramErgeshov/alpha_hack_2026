@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Альфа-Бизнес — Новости для бизнеса</title>
+<style>
+:root{--red:#ef3124;--ink:#0b1f35;--muted:#5e6b7a;--line:#e6e8eb;--bg:#f3f4f5;--card:#fff;--ok:#0a8f4c;--warn:#b26b00;--bank:#fff1f0;--ai:#eef4ff}
+*{box-sizing:border-box}body{margin:0;font:15px/1.45 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.bar{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:16px;padding:12px 16px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;cursor:pointer}
+.logo i{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:8px;background:var(--red);color:#fff;font-style:normal}
+nav{display:flex;gap:4px;flex:1;flex-wrap:wrap}nav a{padding:8px 12px;border-radius:8px;color:var(--muted);text-decoration:none;cursor:pointer}
+nav a.on{background:var(--bg);color:var(--ink);font-weight:600}
+.badge{background:var(--red);color:#fff;border-radius:10px;padding:1px 7px;font-size:12px;margin-left:6px}
+main{max-width:1240px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:26px;margin:4px 0 16px}h2{font-size:18px;margin:0 0 10px}h3{font-size:15px;margin:14px 0 6px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.tile{cursor:pointer;transition:transform .12s}.tile:hover{transform:translateY(-2px)}
+.entry{background:linear-gradient(135deg,var(--red),#c2190e);color:#fff;border:0}
+.entry p{opacity:.9;margin:6px 0 0}.muted{color:var(--muted)}.small{font-size:13px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+select,input,textarea{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;min-width:0}
+button{font:inherit;border:0;border-radius:10px;padding:9px 14px;cursor:pointer;background:var(--ink);color:#fff}
+button.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}button.red{background:var(--red)}
+button:disabled{opacity:.5;cursor:default}
+.layout{display:grid;grid-template-columns:minmax(300px,420px) 1fr;gap:16px;align-items:start}
+@media (max-width:900px){.layout{grid-template-columns:1fr}}
+.client{padding:10px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;cursor:pointer;background:#fff}
+.client.on{border-color:var(--red);box-shadow:0 0 0 2px #ef312422}
+.news{padding:12px;border:1px solid var(--line);border-radius:12px;margin-bottom:10px;cursor:pointer;background:#fff}
+.news.on{border-color:var(--red)}.news h4{margin:0 0 6px;font-size:15px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}.chip{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--bg);color:var(--muted)}
+.score{font-weight:700}.high{color:var(--red)}.medium{color:var(--warn)}.low{color:var(--muted)}
+.block{border-radius:12px;padding:12px 14px;margin:10px 0;border:1px solid var(--line);background:#fff}
+.block.bank{background:var(--bank);border-color:#ffd3cf}.block.ai{background:var(--ai);border-color:#d6e4ff}
+.label{display:inline-block;font-size:11px;letter-spacing:.03em;text-transform:uppercase;font-weight:700;padding:2px 8px;border-radius:6px;margin-bottom:6px}
+.label.bank{background:var(--red);color:#fff}.label.ai{background:#2f6fed;color:#fff}.label.fact{background:var(--ink);color:#fff}.label.ad{background:#ffb800;color:#000}
+ul{margin:6px 0;padding-left:18px}li{margin:4px 0}.ev{font-size:11px;color:var(--muted);margin-left:4px;white-space:nowrap}
+.ev a{color:inherit}.unsupported{color:var(--warn)}
+details{margin-top:8px}summary{cursor:pointer;color:var(--muted)}
+.trace{font-size:13px;border-left:2px solid var(--line);padding-left:10px;margin:6px 0}
+.status-complete{color:var(--ok)}.status-fallback,.status-budget_exhausted,.status-not_completed{color:var(--warn)}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid #ccc;border-top-color:var(--red);border-radius:50%;animation:s 1s linear infinite;vertical-align:middle}
+@keyframes s{to{transform:rotate(360deg)}}.empty{padding:30px;text-align:center;color:var(--muted)}
+.answer{background:var(--bg);border-radius:10px;padding:10px;margin-top:8px;white-space:pre-wrap}
+.hidden{display:none}
+.scroll{overflow:auto;padding-right:4px}
+@media (min-width:901px){.sticky{position:sticky;top:76px;max-height:calc(100vh - 92px);overflow:auto}}
+</style>
+</head>
+<body>
+<header><div class="bar">
+  <div class="logo" id="home-logo"><i>А</i>Альфа-Бизнес</div>
+  <nav id="nav">
+    <a data-view="home" class="on">Главная</a><a>Счета</a><a>Платежи</a><a>Кредиты</a>
+    <a data-view="news">Новости для бизнеса<span class="badge" id="nav-badge">AI</span></a>
+  </nav>
+  <span class="muted small" id="who"></span>
+</div></header>
+
+<main>
+<section id="view-home">
+  <h1>Добрый день!</h1>
+  <div class="grid">
+    <div class="card tile entry" id="entry-tile">
+      <h2>Новости для бизнеса</h2>
+      <p>Персональная лента событий: что произошло, чем это важно для вашей компании и как это оценивает Альфа-Банк.</p>
+      <p class="small" id="entry-count"></p>
+    </div>
+    <div class="card"><h2>Счета</h2><p class="muted">Расчётный счёт ••• 4417</p></div>
+    <div class="card"><h2>Платежи</h2><p class="muted">Нет платежей на подпись</p></div>
+    <div class="card"><h2>Кредиты и гарантии</h2><p class="muted">Условия по продуктам</p></div>
+  </div>
+</section>
+
+<section id="view-news" class="hidden">
+  <h1>Новости для бизнеса</h1>
+  <div class="card" style="margin-bottom:16px">
+    <div class="row">
+      <label class="small muted">Ваша роль</label>
+      <select id="role"></select>
+      <input id="client-q" placeholder="Поиск клиента: ID, ОКВЭД, отрасль, город" style="flex:1;min-width:220px">
+      <select id="client-industry" style="max-width:280px"><option value="">Все отрасли</option></select>
+      <button class="ghost" id="client-search">Найти</button>
+    </div>
+    <p class="small muted" style="margin:8px 0 0">Крупный бизнес: выручка от 15 млрд руб. Данные компаний обезличены.</p>
+  </div>
+  <div class="layout">
+    <div>
+      <div class="card"><h2>Клиент</h2><div id="clients" class="scroll" style="max-height:300px"><div class="empty"><span class="spinner"></span></div></div></div>
+      <div class="card" style="margin-top:16px"><h2>Персональная лента</h2>
+        <p class="small muted" id="feed-meta"></p><div id="feed" class="scroll" style="max-height:70vh"><div class="empty">Выберите клиента</div></div></div>
+    </div>
+    <div class="card sticky" id="insight"><div class="empty">Выберите новость в ленте, чтобы получить персональный разбор</div></div>
+  </div>
+</section>
+</main>
+
+<script>
+"use strict";
+const API = "/api/v1";
+const state = { role: "cfo", client: null, newsId: null, insight: null };
+const $ = (id) => document.getElementById(id);
+
+function el(tag, attrs, ...children) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === "class") node.className = v;
+    else if (k.startsWith("on")) node.addEventListener(k.slice(2), v);
+    else if (v !== null && v !== undefined) node.setAttribute(k, v);
+  }
+  for (const c of children.flat()) if (c !== null && c !== undefined) node.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  return node;
+}
+function safeUrl(u) { try { const p = new URL(u); return (p.protocol === "https:" || p.protocol === "http:") ? p.href : null; } catch { return null; } }
+async function api(path, body) {
+  const opts = body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {};
+  const r = await fetch(API + path, opts);
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.message || ("HTTP " + r.status));
+  return data;
+}
+function money(v) { return v ? (v / 1e9).toLocaleString("ru-RU", { maximumFractionDigits: 1 }) + " млрд ₽" : "выручка неизвестна"; }
+function date(s) { return s ? new Date(s).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" }) : "дата неизвестна"; }
+
+function show(view) {
+  $("view-home").classList.toggle("hidden", view !== "home");
+  $("view-news").classList.toggle("hidden", view !== "news");
+  for (const a of document.querySelectorAll("nav a")) a.classList.toggle("on", a.dataset.view === view);
+  if (view === "news" && !$("clients").dataset.loaded) loadClients();
+}
+
+async function init() {
+  $("home-logo").onclick = () => show("home");
+  $("entry-tile").onclick = () => show("news");
+  for (const a of document.querySelectorAll("nav a[data-view]")) a.onclick = () => show(a.dataset.view);
+  $("client-search").onclick = loadClients;
+  $("client-q").addEventListener("keydown", (e) => { if (e.key === "Enter") loadClients(); });
+  $("client-industry").onchange = loadClients;
+  $("role").onchange = () => { state.role = $("role").value; $("who").textContent = $("role").selectedOptions[0].textContent; if (state.client) loadFeed(); };
+  try {
+    const [roles, facets, news] = await Promise.all([api("/roles"), api("/clients/facets"), api("/news?limit=1")]);
+    for (const r of roles.items) $("role").append(el("option", { value: r.id }, r.title));
+    $("role").value = state.role; $("who").textContent = $("role").selectedOptions[0].textContent;
+    for (const f of facets.industries) $("client-industry").append(el("option", { value: f.name }, `${f.name} (${f.count})`));
+    $("entry-count").textContent = `В ленте ${news.total} новостей`;
+  } catch (e) { $("entry-count").textContent = "Сервис недоступен: " + e.message; }
+}
+
+async function loadClients() {
+  const box = $("clients"); box.replaceChildren(el("div", { class: "empty" }, el("span", { class: "spinner" })));
+  const q = new URLSearchParams({ limit: "12", q: $("client-q").value.trim(), industry: $("client-industry").value });
+  try {
+    const data = await api("/clients?" + q);
+    box.dataset.loaded = "1";
+    box.replaceChildren();
+    if (!data.items.length) { box.append(el("div", { class: "empty" }, "Клиенты не найдены")); return; }
+    for (const c of data.items) {
+      const node = el("div", { class: "client" + (state.client === c.id ? " on" : ""), onclick: () => { state.client = c.id; for (const n of box.children) n.classList.remove("on"); node.classList.add("on"); loadFeed(); } },
+        el("div", { class: "row" }, el("b", {}, c.id), el("span", { class: "muted small" }, money(c.revenue_rub))),
+        el("div", { class: "small" }, c.industry || "Отрасль не указана"),
+        el("div", { class: "chips" }, el("span", { class: "chip" }, c.region || "регион не указан"),
+          ...(c.foreign_trade ? [el("span", { class: "chip" }, "ВЭД")] : []),
+          ...c.products.map((p) => el("span", { class: "chip" }, ({ loans: "кредиты", leasing: "лизинг", deposits: "депозиты", bank_guarantees: "гарантии", factoring: "факторинг", salary_project: "зарплатный проект", rko: "РКО" })[p] || p))));
+      box.append(node);
+    }
+    box.append(el("p", { class: "small muted" }, `Показано ${data.items.length} из ${data.total}`));
+  } catch (e) { box.replaceChildren(el("div", { class: "empty" }, "Ошибка: " + e.message)); }
+}
+
+async function loadFeed() {
+  const box = $("feed"); box.replaceChildren(el("div", { class: "empty" }, el("span", { class: "spinner" })));
+  try {
+    const data = await api(`/companies/${encodeURIComponent(state.client)}/feed?role=${state.role}&limit=15`);
+    const cps = data.counterparty_industries.length ? " · контрагенты: " + data.counterparty_industries.slice(0, 2).join("; ") : "";
+    $("feed-meta").textContent = `Для роли «${data.role.title}»: ${data.role.focus}${cps}`;
+    box.replaceChildren();
+    for (const n of data.items) {
+      const band = n.relevance.band;
+      const node = el("div", { class: "news" + (state.newsId === n.news_id ? " on" : ""), onclick: () => { for (const x of box.children) x.classList.remove("on"); node.classList.add("on"); loadInsight(n.news_id); } },
+        el("h4", {}, n.title),
+        el("div", { class: "small muted" }, `${n.source} · ${date(n.published)}`, n.duplicates.length ? ` · ещё ${n.duplicates.length} источн.` : ""),
+        el("div", { class: "chips" }, el("span", { class: "chip score " + band }, `Важность ${Math.round(n.relevance.score * 100)}%`), ...n.category_labels.map((c) => el("span", { class: "chip" }, c))),
+        el("div", { class: "small" }, "Почему вам: " + n.why_for_you),
+        n.bank_hint ? el("div", { class: "small", style: "color:var(--red);margin-top:4px" }, "● " + n.bank_hint.label + ": " + n.bank_hint.title) : null);
+      box.append(node);
+    }
+    for (const g of data.data_gaps) box.append(el("p", { class: "small muted" }, "ℹ " + g));
+  } catch (e) { box.replaceChildren(el("div", { class: "empty" }, "Ошибка: " + e.message)); }
+}
+
+function evidence(ids, sources) {
+  if (!ids || !ids.length) return el("span", { class: "ev unsupported" }, "[нет источника]");
+  return el("span", { class: "ev" }, "[", ...ids.flatMap((id, i) => {
+    const s = sources[id]; const url = s && safeUrl(s.url);
+    const link = url ? el("a", { href: url, target: "_blank", rel: "noopener noreferrer", title: s.title || "" }, id) : el("span", { title: s ? (s.title || s.document || "") : "" }, id);
+    return i ? [", ", link] : [link];
+  }), "]");
+}
+function claims(title, list, sources, kind) {
+  if (!list || !list.length) return null;
+  return el("div", { class: "block " + (kind || "") }, kind === "ai" ? el("span", { class: "label ai" }, "Вывод AI") : null,
+    el("h3", { style: "margin-top:0" }, title),
+    el("ul", {}, list.map((c) => el("li", {}, c.text, c.horizon ? el("span", { class: "ev" }, " · " + c.horizon) : null, evidence(c.evidence_ids, sources)))));
+}
+
+async function loadInsight(newsId) {
+  state.newsId = newsId;
+  const box = $("insight");
+  box.replaceChildren(el("div", { class: "empty" }, el("span", { class: "spinner" }), " Агент планирует анализ, ищет материалы банка и проверяет выводы…"));
+  try {
+    const d = await api("/insights", { company_id: state.client, news_id: newsId, role: state.role });
+    state.insight = d; renderInsight(d);
+  } catch (e) { box.replaceChildren(el("div", { class: "empty" }, "Ошибка: " + e.message)); }
+}
+
+function renderInsight(d) {
+  const sources = Object.fromEntries(d.sources.map((s) => [s.id, s]));
+  const i = d.interpretation; const box = $("insight");
+  const method = d.generation.method === "allowlisted_llm" ? `AI-агент (${d.generation.models.draft})` : "правила без модели";
+  box.replaceChildren(
+    el("div", { class: "small muted" }, `Разбор для роли «${d.role.title}» · ${method}${d.cached ? " · из кэша" : ""}`),
+    el("h2", { style: "margin-top:6px" }, d.article.title || "Новость"),
+    el("div", { class: "block" }, el("span", { class: "label fact" }, "Что произошло"), el("div", {}, d.facts.what_happened, evidence(d.facts.evidence_ids, sources))),
+    el("div", { class: "block ai" }, el("span", { class: "label ai" }, "Почему это важно вам"), el("div", {}, i.why_it_matters, evidence(i.why_it_matters_evidence_ids, sources)),
+      el("div", { class: "small muted", style: "margin-top:6px" }, "Признаки компании: " + d.relevance.reasons.join("; "))),
+    claims("Возможные последствия", i.potential_effects, sources, "ai"),
+    claims("Риски", i.risks, sources, "ai"),
+    claims("Возможности", i.opportunities, sources, "ai"),
+    claims("Что можно сделать", i.possible_actions, sources, "ai"),
+    i.bank_position ? el("div", { class: "block bank" }, el("span", { class: "label bank" }, "Позиция Альфа-Банка"), el("div", {}, i.bank_position.text, evidence(i.bank_position.evidence_ids, sources))) :
+      el("div", { class: "block bank" }, el("span", { class: "label bank" }, "Позиция Альфа-Банка"), el("div", { class: "muted" }, "В материалах банка нет явной позиции по этому событию. Связанные материалы — в источниках A1…")),
+    ...(d.offers || []).map((o) => el("div", { class: "block" }, el("span", { class: "label ad" }, o.label + " · реклама"), el("div", {}, el("b", {}, o.product + ". "), o.text), el("div", { class: "small muted" }, "Почему предлагаем: " + o.reason))),
+    i.uncertainties.length ? el("details", {}, el("summary", {}, `Неопределённости (${i.uncertainties.length})`), el("ul", {}, i.uncertainties.map((u) => el("li", { class: "small" }, u)))) : null,
+    el("details", {}, el("summary", {}, `Источники (${d.sources.length})`), el("ul", {}, d.sources.map((s) => {
+      const url = safeUrl(s.url);
+      const title = s.title || `${s.document}, стр. ${s.page}`;
+      return el("li", { class: "small" }, el("b", {}, s.id + " "), url ? el("a", { href: url, target: "_blank", rel: "noopener noreferrer" }, title) : title, el("span", { class: "muted" }, " · " + s.type));
+    }))),
+    el("details", {}, el("summary", {}, `Как агент пришёл к выводу (${d.agent_trace.length} шагов, подтверждено ${d.quality_check.claims_supported} из ${d.quality_check.claims_total} утверждений)`),
+      ...d.agent_trace.map((t) => el("div", { class: "trace" }, el("b", { class: "status-" + t.status }, `${t.step} · ${t.status}`), el("span", { class: "muted" }, ` · ${t.duration_ms} мс`), el("div", {}, t.decision)))),
+    el("h3", {}, "Уточнить"),
+    el("div", { class: "row" }, ...[["risks", "Подробнее о рисках"], ["counterparties", "Влияние на контрагентов"], ["treasury", "Взгляд казначея"], ["scenarios", "Сценарии"], ["sources", "Первоисточники"]].map(([lens, label]) => el("button", { class: "ghost", onclick: () => ask("", lens) }, label))),
+    el("div", { class: "row", style: "margin-top:8px" }, el("input", { id: "question", placeholder: "Свой вопрос по этой новости", style: "flex:1" }), el("button", { class: "red", onclick: () => ask($("question").value, "") }, "Спросить")),
+    el("div", { id: "answers" }),
+    el("div", { class: "row", style: "margin-top:14px" }, el("span", { class: "small muted" }, "Разбор полезен?"),
+      el("button", { class: "ghost", onclick: (e) => feedback(true, e.target) }, "Да"), el("button", { class: "ghost", onclick: (e) => feedback(false, e.target) }, "Нет")));
+}
+
+async function ask(question, lens) {
+  const out = $("answers"); const node = el("div", { class: "answer" }, el("span", { class: "spinner" }));
+  out.prepend(node);
+  try {
+    const a = await api(`/insights/${encodeURIComponent(state.insight.id)}/questions`, { question, lens });
+    const sources = Object.fromEntries(state.insight.sources.map((s) => [s.id, s]));
+    node.replaceChildren(el("b", {}, a.question), el("br"), a.answer, evidence(a.evidence_ids, sources));
+  } catch (e) { node.textContent = "Ошибка: " + e.message; }
+}
+async function feedback(useful, button) {
+  let reason = "";
+  if (!useful) reason = prompt("Что не так? (необязательно)") || "";
+  try { await api("/feedback", { insight_id: state.insight.id, useful, reason }); button.parentElement.replaceChildren(el("span", { class: "small muted" }, "Спасибо, оценка учтена")); } catch (e) { alert(e.message); }
+}
+init();
+</script>
+</body>
+</html>

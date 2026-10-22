@@ -46,12 +46,12 @@
   <ItemGroup>
     <ClCompile Include="src\main.cpp" /><ClCompile Include="src\reader.cpp" />
     <ClCompile Include="src\data_store.cpp" /><ClCompile Include="src\analytics.cpp" />
-    <ClCompile Include="src\llm_client.cpp" /><ClCompile Include="src\agent.cpp" /><ClCompile Include="src\http_server.cpp" />
+    <ClCompile Include="src\llm_client.cpp" /><ClCompile Include="src\agent.cpp" /><ClCompile Include="src\http_server.cpp" /><ClCompile Include="src\news.cpp" /><ClCompile Include="src\feed.cpp" /><ClCompile Include="src\budget.cpp" /><ClCompile Include="src\verifier.cpp" /><ClCompile Include="src\offers.cpp" /><ClCompile Include="src\metrics.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\reader.hpp" /><ClInclude Include="src\data_store.hpp" />
     <ClInclude Include="src\analytics.hpp" /><ClInclude Include="src\llm_client.hpp" />
-    <ClInclude Include="src\agent.hpp" /><ClInclude Include="src\http_server.hpp" /><ClInclude Include="src\json.hpp" />
+    <ClInclude Include="src\agent.hpp" /><ClInclude Include="src\http_server.hpp" /><ClInclude Include="src\json.hpp" /><ClInclude Include="src\news.hpp" /><ClInclude Include="src\feed.hpp" /><ClInclude Include="src\budget.hpp" /><ClInclude Include="src\verifier.hpp" /><ClInclude Include="src\offers.hpp" /><ClInclude Include="src\metrics.hpp" /><ClInclude Include="src\text_util.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

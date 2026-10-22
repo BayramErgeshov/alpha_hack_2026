@@ -15,3 +15,7 @@ struct ParsedPage {
 };
 
 ParsedPage read_url(const std::string& url, long timeout_seconds = 25, bool jina_mode = true);
+
+// Downloads a public http(s) resource as text (RSS/Atom feeds). Applies the same
+// public-address checks and redirect validation as read_url().
+bool fetch_public_text(const std::string& url, long timeout_seconds, std::string& body, std::string& error);

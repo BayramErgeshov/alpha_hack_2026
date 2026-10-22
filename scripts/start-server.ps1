@@ -19,7 +19,9 @@ if ($PSBoundParameters.ContainsKey('EnvironmentFile') -and !(Test-Path -LiteralP
 }
 $settings = Read-AlphaEnvironment $environmentPath
 foreach ($name in @('ALFA_HOST','ALFA_PORT','ALFA_DATA_DIR','ALFA_ANALYTICS_DIR','ALFA_API_TOKEN',
-    'ALFA_LLM_API_KEY','ALFA_LLM_BASE_URL','ALFA_LLM_MODEL','ALFA_LLM_TIMEOUT_SECONDS','ALFA_AGENT_SELF_CHECK')) {
+    'ALFA_LLM_API_KEY','ALFA_LLM_BASE_URL','ALFA_LLM_MODEL','ALFA_LLM_TIMEOUT_SECONDS','ALFA_AGENT_SELF_CHECK',
+        'ALFA_LLM_MODEL_FAST','ALFA_LLM_MODEL_REVIEW','ALFA_LLM_DAILY_TOKEN_LIMIT','ALFA_NEWS_SEED','ALFA_WORK_DIR',
+        'ALFA_STATIC_DIR','ALFA_CORS_ORIGIN','ALFA_NEWS_REFRESH_MINUTES')) {
     if (!$settings.ContainsKey($name)) {
         $inherited = [Environment]::GetEnvironmentVariable($name, 'Process')
         if ($null -ne $inherited) { $settings[$name] = $inherited }

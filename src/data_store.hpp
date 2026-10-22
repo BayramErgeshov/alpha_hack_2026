@@ -51,6 +51,15 @@ struct CompanyProfile {
     std::vector<Counterparty> counterparties;
 };
 
+struct ClientFilter {
+    std::string query;
+    std::string industry;
+    std::string region;
+    double min_revenue = 15000000000.0;
+    size_t limit = 50;
+    size_t offset = 0;
+};
+
 class DataStore {
 public:
     bool load(const std::string& data_dir, std::string& error);
@@ -62,6 +71,10 @@ public:
     json::Value profile_json(const CompanyProfile& profile) const;
     json::Value network_json(const CompanyProfile& profile) const;
     std::vector<const CompanyProfile*> search(const std::string& query, size_t limit) const;
+    json::Value list_clients(const ClientFilter& filter) const;
+    json::Value client_facets(double min_revenue) const;
+    json::Value client_summary(const CompanyProfile& profile) const;
+    std::vector<std::string> counterparty_industries(const CompanyProfile& profile, size_t top) const;
 
 private:
     std::vector<CompanyProfile> companies_;

@@ -1013,3 +1013,28 @@ ParsedPage read_url(const std::string& url, long timeout_seconds, bool jina_mode
     if (page.content_markdown.empty()) page.error = "No readable content was found";
     return page;
 }
+
+bool fetch_public_text(const std::string& url, long timeout_seconds, std::string& body, std::string& error) {
+    body.clear();
+    std::string current = url;
+    for (int hop = 0; hop <= 5; ++hop) {
+        if (!safe_http_url(current, error)) { error = hop ? "Redirect rejected: " + error : error; return false; }
+        g_last_fetch_error.clear();
+        body = fetch_html(current, timeout_seconds);
+        if (g_last_http_status >= 300 && g_last_http_status < 400 && !g_last_redirect_location.empty()) {
+            current = join_url(current, g_last_redirect_location);
+            continue;
+        }
+        if (g_last_http_status < 200 || g_last_http_status >= 300) {
+            error = g_last_http_status ? "Source returned HTTP " + std::to_string(g_last_http_status)
+                                       : (g_last_fetch_error.empty() ? "Unable to fetch source" : g_last_fetch_error);
+            body.clear();
+            return false;
+        }
+        if (body.empty()) { error = "Source returned an empty response"; return false; }
+        return true;
+    }
+    error = "Too many redirects";
+    body.clear();
+    return false;
+}

@@ -1,4 +1,5 @@
 #include "data_store.hpp"
+#include "text_util.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -438,6 +439,101 @@ std::vector<const CompanyProfile*> DataStore::search(const std::string& query, s
         const std::string code = lower_ascii(company.okved_code);
         if (id == needle || code == needle) result.push_back(&company);
         if (result.size() >= limit) break;
+    }
+    return result;
+}
+
+json::Value DataStore::client_summary(const CompanyProfile& p) const {
+    json::Value item = json::Value::object();
+    item["id"] = p.id;
+    item["industry"] = p.industry.empty() ? json::Value(nullptr) : json::Value(p.industry);
+    item["industry_category"] = classify_industry(p.okved_code, p.industry);
+    item["okved_code"] = p.okved_code.empty() ? json::Value(nullptr) : json::Value(p.okved_code);
+    item["region"] = p.region.empty() ? json::Value(nullptr) : json::Value(p.region);
+    item["city"] = p.city.empty() ? json::Value(nullptr) : json::Value(p.city);
+    item["revenue_rub"] = p.revenue > 0 ? json::Value(p.revenue) : json::Value(nullptr);
+    item["client_type"] = p.client_type.empty() ? json::Value(nullptr) : json::Value(p.client_type);
+    item["group_size"] = p.group_size;
+    item["foreign_trade"] = p.fts;
+    json::Value products = json::Value::array();
+    if (p.rko) products.push_back("rko");
+    if (p.loans) products.push_back("loans");
+    if (p.leasing) products.push_back("leasing");
+    if (p.guarantees) products.push_back("bank_guarantees");
+    if (p.deposits) products.push_back("deposits");
+    if (p.salary_project) products.push_back("salary_project");
+    if (p.factoring) products.push_back("factoring");
+    item["products"] = std::move(products);
+    return item;
+}
+
+json::Value DataStore::list_clients(const ClientFilter& filter) const {
+    const std::string needle = textutil::lower(trim_ascii(filter.query));
+    std::vector<const CompanyProfile*> matched;
+    for (const auto& company : companies_) {
+        if (company.revenue < filter.min_revenue) continue;
+        if (!filter.industry.empty() && company.industry != filter.industry) continue;
+        if (!filter.region.empty() && company.region != filter.region) continue;
+        if (!needle.empty()) {
+            const bool id_match = textutil::lower(company.id) == needle;
+            const bool code_match = !company.okved_code.empty() && company.okved_code.rfind(filter.query, 0) == 0;
+            const bool text_match = textutil::lower(company.industry).find(needle) != std::string::npos ||
+                textutil::lower(company.city).find(needle) != std::string::npos;
+            if (!id_match && !code_match && !text_match) continue;
+        }
+        matched.push_back(&company);
+    }
+    std::sort(matched.begin(), matched.end(), [](const CompanyProfile* a, const CompanyProfile* b) {
+        if (a->revenue != b->revenue) return a->revenue > b->revenue;
+        return a->id < b->id;
+    });
+    const size_t limit = std::clamp<size_t>(filter.limit, 1, 200);
+    json::Value result = json::Value::object();
+    result["total"] = static_cast<long long>(matched.size());
+    result["limit"] = static_cast<long long>(limit);
+    result["offset"] = static_cast<long long>(filter.offset);
+    result["min_revenue_rub"] = filter.min_revenue;
+    json::Value items = json::Value::array();
+    for (size_t i = filter.offset; i < matched.size() && i < filter.offset + limit; ++i)
+        items.push_back(client_summary(*matched[i]));
+    result["items"] = std::move(items);
+    return result;
+}
+
+json::Value DataStore::client_facets(double min_revenue) const {
+    std::unordered_map<std::string, long long> industries, regions;
+    for (const auto& company : companies_) {
+        if (company.revenue < min_revenue) continue;
+        if (!company.industry.empty()) ++industries[company.industry];
+        if (!company.region.empty()) ++regions[company.region];
+    }
+    const auto top = [](const std::unordered_map<std::string, long long>& counts) {
+        std::vector<std::pair<std::string, long long>> items(counts.begin(), counts.end());
+        std::sort(items.begin(), items.end(), [](const auto& a, const auto& b) {
+            return a.second != b.second ? a.second > b.second : a.first < b.first;
+        });
+        json::Value out = json::Value::array();
+        for (size_t i = 0; i < items.size() && i < 30; ++i) {
+            json::Value item = json::Value::object();
+            item["name"] = items[i].first;
+            item["count"] = items[i].second;
+            out.push_back(std::move(item));
+        }
+        return out;
+    };
+    json::Value result = json::Value::object();
+    result["industries"] = top(industries);
+    result["regions"] = top(regions);
+    return result;
+}
+
+std::vector<std::string> DataStore::counterparty_industries(const CompanyProfile& profile, size_t top) const {
+    std::vector<std::string> result;
+    for (const auto& c : profile.counterparties) {
+        if (result.size() >= top) break;
+        const CompanyProfile* other = find(c.company_id);
+        if (!other || other->industry.empty()) continue;
+        if (std::find(result.begin(), result.end(), other->industry) == result.end()) result.push_back(other->industry);
     }
     return result;
 }

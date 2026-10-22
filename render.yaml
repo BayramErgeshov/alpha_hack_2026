@@ -1,0 +1,16 @@
+# One-click deploy on Render (free Docker web service): New + -> Blueprint -> this repository.
+services:
+  - type: web
+    name: alfa-news-insights
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: ALFA_LLM_API_KEY
+        sync: false            # paste the organizers' key in the Render dashboard, never in git
+      - key: ALFA_LLM_BASE_URL
+        value: https://changellenge.up.railway.app/v1
+      - key: ALFA_LLM_DAILY_TOKEN_LIMIT
+        value: "400000"
+      - key: ALFA_NEWS_REFRESH_MINUTES
+        value: "30"
