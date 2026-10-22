@@ -229,6 +229,20 @@ Response route(const Request& request, const ServerConfig& config, const DataSto
         for (const auto& model : allowed_llm_models()) value["models"].push_back(model);
         return json_response(200, value);
     }
+    if (request.method == "GET" && path == "/api/v1/clients") {
+        ClientFilter filter;
+        const auto text = [&](const char* key) { const auto it = query.find(key); return it == query.end() ? std::string() : it->second; };
+        filter.query = text("q").substr(0, 200);
+        filter.industry = text("industry").substr(0, 400);
+        filter.region = text("region").substr(0, 200);
+        try { if (!text("min_revenue").empty()) filter.min_revenue = std::max(0.0, std::stod(text("min_revenue"))); } catch (...) {}
+        try { if (!text("limit").empty()) filter.limit = std::clamp<size_t>(std::stoul(text("limit")), 1, 200); } catch (...) {}
+        try { if (!text("offset").empty()) filter.offset = std::min<size_t>(std::stoul(text("offset")), 1000000); } catch (...) {}
+        return json_response(200, data.list_clients(filter));
+    }
+    if (request.method == "GET" && path == "/api/v1/clients/facets") {
+        return json_response(200, data.client_facets(15000000000.0));
+    }
     if (request.method == "GET" && path == "/api/v1/companies") {
         const auto it = query.find("q");
         if (it == query.end() || it->second.empty()) return json_response(400, error_json("query_required", "Provide q with a company name or identifier"));

@@ -8,8 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 find_package(CURL REQUIRED)
 find_package(Threads REQUIRED)
 
-add_executable(alpha_backend
-    src/main.cpp
+set(ALFA_CORE_SOURCES
     src/reader.cpp
     src/data_store.cpp
     src/analytics.cpp
@@ -17,6 +16,7 @@ add_executable(alpha_backend
     src/agent.cpp
     src/http_server.cpp
 )
+add_executable(alpha_backend src/main.cpp ${ALFA_CORE_SOURCES})
 target_include_directories(alpha_backend PRIVATE src)
 target_link_libraries(alpha_backend PRIVATE CURL::libcurl Threads::Threads)
 if(WIN32)
@@ -58,6 +58,13 @@ if(BUILD_TESTING)
         target_compile_options(analytics_index_tests PRIVATE /utf-8 /EHsc)
     endif()
     add_test(NAME analytics_index COMMAND analytics_index_tests)
+    add_executable(backend_tests tests/backend_tests.cpp ${ALFA_CORE_SOURCES})
+    target_include_directories(backend_tests PRIVATE src tests)
+    target_link_libraries(backend_tests PRIVATE CURL::libcurl Threads::Threads)
+    if(MSVC)
+        target_compile_options(backend_tests PRIVATE /utf-8 /EHsc)
+    endif()
+    add_test(NAME backend COMMAND backend_tests WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif()
 
 if(WIN32 AND DEFINED VCPKG_INSTALLED_DIR AND DEFINED VCPKG_TARGET_TRIPLET)

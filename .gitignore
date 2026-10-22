@@ -22,3 +22,5 @@ example/work/
 *.suo
 __pycache__/
 test-results/
+build/
+.superpowers/
