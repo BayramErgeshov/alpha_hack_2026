@@ -1,0 +1,364 @@
+{
+  "agent_trace": [
+    {
+      "decision": "План составлен моделью google/gemma-4-26b-a4b-it",
+      "detail": {
+        "analytics_queries": [
+          "ключевая ставка кредиты",
+          "инфляция прогноз",
+          "Прогноз по рублю до конца октября: от 80 до 88 рублей за доллар"
+        ],
+        "event_categories": [
+          "Ставки и кредитование",
+          "Валюта и внешняя торговля",
+          "Санкции и ограничения",
+          "Спрос, цены и потребление",
+          "Регулирование и налоги"
+        ],
+        "focus": [
+          "стоимость долга"
+        ],
+        "need_counterparties": true,
+        "need_related_news": true
+      },
+      "duration_ms": 3,
+      "status": "complete",
+      "step": "plan"
+    },
+    {
+      "decision": "Собраны профиль, контрагенты, связанные новости, 5 фрагментов аналитики Альфа-Банка",
+      "detail": {
+        "analytics_hits": 5,
+        "counterparty_industries": 1,
+        "related_news": 3,
+        "source_ids": [
+          "N1",
+          "C1",
+          "P1",
+          "R1",
+          "R2",
+          "R3",
+          "A1",
+          "A2",
+          "A3",
+          "A4",
+          "A5"
+        ],
+        "tools_called": [
+          "company_profile",
+          "payment_network",
+          "related_news",
+          "analytics_search"
+        ]
+      },
+      "duration_ms": 1,
+      "status": "complete",
+      "step": "tools"
+    },
+    {
+      "decision": "Черновик разбора написан моделью deepseek/deepseek-v4.1-flash",
+      "detail": {},
+      "duration_ms": 1,
+      "status": "complete",
+      "step": "draft"
+    },
+    {
+      "decision": "Проверка пройдена: утверждения подкреплены источниками",
+      "detail": {
+        "additional_queries": [],
+        "programmatic": {
+          "claims_supported": 6,
+          "claims_total": 6,
+          "issues": [],
+          "ok": true
+        },
+        "reviewer_issues": [],
+        "reviewer_status": "complete"
+      },
+      "duration_ms": 0,
+      "status": "complete",
+      "step": "verify"
+    },
+    {
+      "decision": "Ответ собран из проверенного черновика модели",
+      "detail": {
+        "bank_position_confirmed": true,
+        "claims_supported": 6,
+        "claims_total": 6
+      },
+      "duration_ms": 0,
+      "status": "complete",
+      "step": "finalize"
+    }
+  ],
+  "article": {
+    "news_id": "n736e0e8967d1",
+    "published_time": "2026-10-16T08:00:00Z",
+    "source_name": "Сравни",
+    "title": "Прогноз по рублю до конца октября: от 80 до 88 рублей за доллар",
+    "url": "https://www.sravni.ru/text/chto-budet-s-rublyom-vo-vtoroj-polovine-oktyabrya"
+  },
+  "bank_analytics": [
+    {
+      "document": "ALFA-Macro_Insights-Policy_Rate_11Sep.md",
+      "excerpt": "Центр макроэкономического анализа 1 1 сентября 2026 г. Ключевая ставка ЦБ РФ Ставка без изменения на 14,00/0, риторика стала жестче ЦБ РФ принял решение оставит…",
+      "id": "A1",
+      "page": 1,
+      "query": "ключевая ставка кредиты",
+      "relevance_score": 8.70368814685737,
+      "text_extraction": "windows_ocr",
+      "type": "alfa_bank_analytics"
+    },
+    {
+      "document": "Бонд_Бриф_14092026.md",
+      "excerpt": "Рынок облигаций Бонд Бриф: Итоги недели динамика цен на нефть, помесячно 105 95 85 75 65 55 45 35 — Юралс, USD/6app — Brent, uso/6app динамика доходности ОФЗ, %…",
+      "id": "A2",
+      "page": 4,
+      "query": "ключевая ставка кредиты",
+      "relevance_score": 8.43490731269126,
+      "text_extraction": "windows_ocr",
+      "type": "alfa_bank_analytics"
+    }
+  ],
+  "budget": {
+    "by_model": {
+      "deepseek/deepseek-v4.1-flash": 5569,
+      "google/gemma-4-26b-a4b-it": 2314,
+      "z-ai/glm-5.3-flash": 2597
+    },
+    "calls": 7,
+    "day": 20748,
+    "exhausted": false,
+    "limit_tokens": 400000,
+    "remaining_tokens": 389520,
+    "reset": "03:00 MSK",
+    "used_tokens": 10480
+  },
+  "cached": false,
+  "company_context": {
+    "bank_guarantees": true,
+    "client_type": "CLIENT",
+    "credit_products": true,
+    "data_gaps": [],
+    "deposits": false,
+    "factoring": false,
+    "foreign_trade_country": "КИТАЙ",
+    "foreign_trade_data": true
+  },
+  "company_id": "U_9250",
+  "event_categories": [
+    "Ставки и кредитование",
+    "Валюта и внешняя торговля",
+    "Санкции и ограничения",
+    "Спрос, цены и потребление",
+    "Регулирование и налоги"
+  ],
+  "facts": {
+    "evidence_ids": [
+      "N1"
+    ],
+    "what_happened": "Банк России сохранил ключевую ставку."
+  },
+  "generation": {
+    "method": "allowlisted_llm",
+    "model": "deepseek/deepseek-v4.1-flash",
+    "models": {
+      "draft": "deepseek/deepseek-v4.1-flash",
+      "plan": "google/gemma-4-26b-a4b-it",
+      "review": "z-ai/glm-5.3-flash"
+    },
+    "self_check": "passed"
+  },
+  "id": "insight-1792707683882-2",
+  "interpretation": {
+    "bank_position": {
+      "evidence_ids": [
+        "A5"
+      ],
+      "label": "Позиция из материалов Альфа-Банка",
+      "text": "Альфа-Банк ожидает сохранения жёсткой политики"
+    },
+    "model_conclusions": [
+      {
+        "evidence_ids": [
+          "C1"
+        ],
+        "source_type": "model_inference",
+        "supported_by_cited_source": true,
+        "text": "Эффект зависит от доли плавающих ставок."
+      }
+    ],
+    "opportunities": [
+      {
+        "evidence_ids": [
+          "N1"
+        ],
+        "source_type": "model_interpretation",
+        "supported_by_cited_source": true,
+        "text": "Зафиксировать ставку по новым кредитам."
+      }
+    ],
+    "possible_actions": [
+      {
+        "evidence_ids": [
+          "C1"
+        ],
+        "source_type": "model_suggested_action",
+        "supported_by_cited_source": true,
+        "text": "Пересчитать стресс-сценарий по долгу."
+      }
+    ],
+    "potential_effects": [
+      {
+        "evidence_ids": [
+          "N1",
+          "C1"
+        ],
+        "horizon": "3-6 месяцев",
+        "source_type": "model_interpretation",
+        "supported_by_cited_source": true,
+        "text": "Процентные расходы не снизятся в ближайшие кварталы."
+      }
+    ],
+    "risks": [
+      {
+        "confidence": 0.7,
+        "evidence_ids": [
+          "N1",
+          "C1"
+        ],
+        "source_type": "model_interpretation",
+        "supported_by_cited_source": true,
+        "text": "Рефинансирование долга останется дорогим."
+      }
+    ],
+    "uncertainties": [
+      "Структура долга компании неизвестна."
+    ],
+    "why_it_matters": "У компании есть кредиты, поэтому стоимость долга остаётся высокой.",
+    "why_it_matters_evidence_ids": [
+      "N1",
+      "C1"
+    ]
+  },
+  "offers": [
+    {
+      "is_advertising": true,
+      "label": "Предложение Альфа-Банка",
+      "product": "Валютные форварды и свопы",
+      "product_id": "fx_hedging",
+      "reason": "У компании есть внешнеторговая деятельность, событие касается валюты или внешней торговли",
+      "text": "Зафиксируйте курс по будущим валютным платежам и поступлениям, чтобы колебания рубля не съедали маржу."
+    },
+    {
+      "is_advertising": true,
+      "label": "Предложение Альфа-Банка",
+      "product": "Сопровождение ВЭД и валютный контроль",
+      "product_id": "ved_support",
+      "reason": "Новость влияет на условия внешнеторговых расчётов",
+      "text": "Расчёты с зарубежными контрагентами в юанях и других валютах с сопровождением валютного контроля."
+    }
+  ],
+  "quality_check": {
+    "bank_and_model_views_separated": true,
+    "claims_supported": 6,
+    "claims_total": 6,
+    "company_profile_has_missing_fields": false,
+    "issues_final": 0,
+    "issues_initial": 0,
+    "llm_used": true,
+    "market_share_inferred": false,
+    "remaining_issues": [],
+    "revise_rounds": 0,
+    "scope_note": "Relevance score is a ranking aid, not an impact probability or investment recommendation",
+    "self_check_passed": true,
+    "source_linked": true
+  },
+  "related_news": [
+    {
+      "excerpt": "С начала 2024 года потребление стали сократилось на 31%. Причины: высокие ставки, охлаждение жилищного рынка, урезание п…",
+      "id": "R1",
+      "news_id": "n41ef6b3895a8",
+      "published_time": "2026-10-02T09:00:00Z",
+      "source_name": "The Moscow Times",
+      "title": "Северсталь: спрос на сталь в России за 8 месяцев упал на 16%",
+      "type": "related_news",
+      "url": "https://ru.themoscowtimes.com/2026/10/02/spros-na-stal-v-rossii-za-8-mes-26g-upal-na-16-gg-severstal-a207614"
+    }
+  ],
+  "relevance": {
+    "band": "high",
+    "counterparty_match": null,
+    "direct_industry_topic": null,
+    "event_categories": [
+      "Ставки и кредитование",
+      "Валюта и внешняя торговля",
+      "Санкции и ограничения",
+      "Спрос, цены и потребление",
+      "Регулирование и налоги"
+    ],
+    "industry_match": true,
+    "interpretation": "Оценка по правилам для приоритизации ленты; не является вероятностью финансового эффекта",
+    "reasons": [
+      "Тема события чувствительна для отрасли компании",
+      "У компании есть кредитные продукты, а событие влияет на стоимость заёмных денег",
+      "В профиле есть лизинг или банковские гарантии, их стоимость зависит от ставок",
+      "Компания ведёт внешнеторговую деятельность (есть данные ФТС), а событие касается валюты или внешней торговли",
+      "Влияет на общий макроэкономический фон для крупного бизнеса",
+      "Для роли «Финансовый директор» приоритетна тема «Ставки и кредитование»"
+    ],
+    "role_boost": 1.35,
+    "score": 0.702
+  },
+  "role": {
+    "focus": "стоимость долга, ставка, налоги, маржа и денежный поток",
+    "id": "cfo",
+    "title": "Финансовый директор"
+  },
+  "schema_version": "2.0",
+  "sources": [
+    {
+      "excerpt": "Эксперты допускают укрепление рубля до 80 руб. за доллар и разворот до 88 руб.; юань — 11,9–13,1 руб. Рубль поддерживают ставка 14%, цены на Urals и смягчение с…",
+      "id": "N1",
+      "published_time": "2026-10-16T08:00:00Z",
+      "source_name": "Сравни",
+      "title": "Прогноз по рублю до конца октября: от 80 до 88 рублей за доллар",
+      "type": "external_news",
+      "url": "https://www.sravni.ru/text/chto-budet-s-rublyom-vo-vtoroj-polovine-oktyabrya",
+      "verified_by_service": true
+    },
+    {
+      "company_id": "U_9250",
+      "excerpt": "{\"bank_guarantees\":true,\"client_type\":\"CLIENT\",\"credit_products\":true,\"data_gaps\":[],\"deposits\":false,\"factoring\":false,\"foreign_trade_country\":\"КИТАЙ\",\"foreign…",
+      "id": "C1",
+      "title": "Обезличенный профиль компании U_9250",
+      "type": "company_profile"
+    },
+    {
+      "excerpt": "{\"counterparty_industries\":[\"Строительство прочих инженерных сооружений, не включенных в другие группировки\"],\"top_counterparties\":[{\"amount_rub\":8222880000,\"co…",
+      "id": "P1",
+      "title": "Ключевые контрагенты по обезличенным платежам",
+      "type": "payment_network"
+    },
+    {
+      "excerpt": "С начала 2024 года потребление стали сократилось на 31%. Причины: высокие ставки, охлаждение жилищного рынка, урезание поддержки машиностроения, импорт, перенос…",
+      "id": "R1",
+      "news_id": "n41ef6b3895a8",
+      "published_time": "2026-10-02T09:00:00Z",
+      "source_name": "The Moscow Times",
+      "title": "Северсталь: спрос на сталь в России за 8 месяцев упал на 16%",
+      "type": "related_news",
+      "url": "https://ru.themoscowtimes.com/2026/10/02/spros-na-stal-v-rossii-za-8-mes-26g-upal-na-16-gg-severstal-a207614"
+    },
+    {
+      "excerpt": "С начала года просрочка выросла на 16,9%, её доля в дебиторке — 6,7%. Сильнее всего страдают малые поставщики и экспортёры (9,2%), прежде всего добыча и нефтепе…",
+      "id": "R2",
+      "news_id": "nba4ef584dcb9",
+      "published_time": "2026-07-30T09:00:00Z",
+      "source_name": "The Moscow Times",
+      "title": "Просроченная дебиторская задолженность компаний впервые превысила 9 трлн рублей",
+      "type": "related_news",
+      "url": "https://ru.themoscowtimes.com/2026/07/30/neplatezhi-v-rossiiskoi-ekonomike-vpervie-dostigli-9-trillionov-rublei-a202265"
+    }
+  ]
+}
