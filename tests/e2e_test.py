@@ -134,6 +134,134 @@ def news_refresh_reports_each_source():
     assert len(report["sources"]) == 6 and "added" in report, report
 
 
+# ---------------------------------------------------------------- agent with a local mock model
+def mock_server(scenario, extra_env=None):
+    port = free_port()
+    log = os.path.join(ROOT, "build", "mock-%s-%d.log" % (scenario, port))
+    if os.path.exists(log):
+        os.remove(log)
+    proc = subprocess.Popen([sys.executable, "-I", os.path.join(ROOT, "tests", "mock_llm.py"), str(port)],
+                            env={"MOCK_SCENARIO": scenario, "MOCK_LOG": log, "PATH": os.environ.get("PATH", "")})
+    time.sleep(0.8)
+    env = {"ALFA_LLM_TEST_ENDPOINT": "1", "ALFA_LLM_BASE_URL": "http://127.0.0.1:%d/v1" % port,
+           "ALFA_LLM_API_KEY": "test-key-not-secret"}
+    env.update(extra_env or {})
+    srv = Server(env)
+    return srv, proc, log
+
+
+def calls(log):
+    if not os.path.exists(log):
+        return []
+    with open(log, encoding="utf-8") as f:
+        return [json.loads(line) for line in f if line.strip()]
+
+
+def borrower_and_rate_news(srv):
+    _, clients, _ = srv.get("/api/v1/clients?limit=100")
+    company = next(c for c in clients["items"] if "loans" in c["products"])
+    _, news, _ = srv.get("/api/v1/news?limit=100")
+    rate_news = next(n for n in news["items"] if "rate" in n["categories"] and "ставк" in n["title"].lower())
+    other = next(n for n in news["items"] if n["id"] != rate_news["id"])
+    return company["id"], rate_news["id"], other["id"]
+
+
+def steps(insight):
+    return {s["step"]: s for s in insight["agent_trace"]}
+
+
+@test
+def agent_happy_path_uses_three_models():
+    srv, proc, log = mock_server("happy")
+    try:
+        company, news_id, _ = borrower_and_rate_news(srv)
+        status, insight, _ = srv.post("/api/v1/insights", {"company_id": company, "news_id": news_id, "role": "cfo"})
+        assert status == 200, insight
+        assert insight["generation"]["method"] == "allowlisted_llm", insight["generation"]
+        trace = steps(insight)
+        for step in ("plan", "tools", "draft", "verify", "finalize"):
+            assert step in trace, (step, list(trace))
+        assert trace["plan"]["status"] == "complete", trace["plan"]
+        assert insight["interpretation"]["bank_position"] is not None, insight["interpretation"]
+        assert insight["role"]["id"] == "cfo"
+        assert insight["quality_check"]["claims_supported"] >= 1
+        roles = {c["role"]: c["model"] for c in calls(log)}
+        assert roles.get("planner") == "google/gemma-4-26b-a4b-it", roles
+        assert roles.get("analyst") == "deepseek/deepseek-v4.1-flash", roles
+        assert roles.get("reviewer") == "z-ai/glm-5.3-flash", roles
+        before = len(calls(log))
+        status, again, _ = srv.post("/api/v1/insights", {"company_id": company, "news_id": news_id, "role": "cfo"})
+        assert status == 200 and again.get("cached") is True, again.get("cached")
+        assert len(calls(log)) == before, "cached insight must not call the model"
+        status, answer, _ = srv.post("/api/v1/insights/%s/questions" % insight["id"], {"lens": "treasury"})
+        assert status == 200 and answer["answer"], answer
+    finally:
+        srv.stop()
+        proc.terminate()
+
+
+@test
+def agent_reviewer_requests_more_search_triggers_revise():
+    srv, proc, log = mock_server("revise")
+    try:
+        company, news_id, _ = borrower_and_rate_news(srv)
+        status, insight, _ = srv.post("/api/v1/insights", {"company_id": company, "news_id": news_id, "role": "treasurer"})
+        assert status == 200, insight
+        trace = steps(insight)
+        assert "revise" in trace and trace["revise"]["status"] == "complete", trace.get("revise")
+        assert insight["quality_check"]["revise_rounds"] == 1
+        assert insight["interpretation"]["bank_position"] is not None
+        analysts = [c for c in calls(log) if c["role"] == "analyst"]
+        assert len(analysts) == 2, analysts
+    finally:
+        srv.stop()
+        proc.terminate()
+
+
+@test
+def agent_broken_model_reply_falls_back():
+    srv, proc, log = mock_server("broken")
+    try:
+        company, news_id, _ = borrower_and_rate_news(srv)
+        status, insight, _ = srv.post("/api/v1/insights", {"company_id": company, "news_id": news_id})
+        assert status == 200, insight
+        assert insight["generation"]["method"] == "deterministic_fallback", insight["generation"]
+        assert steps(insight)["plan"]["status"] == "fallback"
+        assert insight["interpretation"]["why_it_matters"]
+    finally:
+        srv.stop()
+        proc.terminate()
+
+
+@test
+def agent_budget_exhausted_skips_model():
+    srv, proc, log = mock_server("happy", {"ALFA_LLM_DAILY_TOKEN_LIMIT": "1"})
+    try:
+        company, news_id, other = borrower_and_rate_news(srv)
+        srv.post("/api/v1/insights", {"company_id": company, "news_id": news_id})
+        before = len(calls(log))
+        status, insight, _ = srv.post("/api/v1/insights", {"company_id": company, "news_id": other})
+        assert status == 200, insight
+        assert len(calls(log)) == before, "no model calls after the budget is exhausted"
+        assert any(s["status"] == "budget_exhausted" for s in insight["agent_trace"]), insight["agent_trace"]
+    finally:
+        srv.stop()
+        proc.terminate()
+
+
+@test
+def insight_without_model_by_text():
+    _, clients, _ = server().get("/api/v1/clients?limit=1")
+    status, insight, _ = server().post("/api/v1/insights", {
+        "company_id": clients["items"][0]["id"], "title": "Курс рубля",
+        "text": "Курс доллара вырос до 90 рублей, экспортёры продают валюту", "role": "treasurer"})
+    assert status == 200, insight
+    assert insight["generation"]["method"] == "deterministic_fallback"
+    assert insight["role"]["id"] == "treasurer"
+    status, bad, _ = server().post("/api/v1/insights", {"company_id": clients["items"][0]["id"], "news_id": "n000000000000"})
+    assert status == 404, bad
+
+
 def main():
     failed = 0
     ran = 0

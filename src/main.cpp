@@ -5,6 +5,7 @@
 #include "http_server.hpp"
 #include "llm_client.hpp"
 #include "news.hpp"
+#include "budget.hpp"
 
 #include <filesystem>
 
@@ -87,7 +88,11 @@ int main() {
     int refresh_minutes = 30;
     try { refresh_minutes = std::clamp(std::stoi(env("ALFA_NEWS_REFRESH_MINUTES", "30")), 0, 24 * 60); } catch (...) {}
     collector.start(refresh_minutes);
-    InsightAgent agent(data, analytics, llm);
+    long long token_limit = 400000;
+    try { token_limit = std::max(1LL, std::stoll(env("ALFA_LLM_DAILY_TOKEN_LIMIT", "400000"))); } catch (...) {}
+    TokenBudget budget(token_limit, (std::filesystem::path(work_dir) / "budget.json").string());
+    InsightAgent agent(data, analytics, llm, budget);
+    agent.attach_news(&news);
     ServerConfig server;
     server.host = env("ALFA_HOST", "127.0.0.1");
     server.port = port_from_env();

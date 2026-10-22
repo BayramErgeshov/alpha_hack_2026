@@ -349,7 +349,22 @@ Response route(const Request& request, const ServerConfig& config, AppServices& 
         article.published_time = body.get("published_time").as_string();
         article.source_name = body.get("source_name").as_string();
         article.text = body.get("text").as_string();
-        if (!article.url.empty()) {
+        const std::string news_id = body.get("news_id").as_string();
+        if (!news_id.empty()) {
+            if (!safe_id(news_id)) return json_response(400, error_json("invalid_news_id", "news_id is invalid"));
+            NewsItem item;
+            if (!app.news.find(news_id, item)) return json_response(404, error_json("news_not_found", "news_id was not found in the news store"));
+            article.news_id = item.id;
+            article.title = item.title;
+            article.text = item.summary.empty() ? item.title : item.summary;
+            article.url = item.url;
+            article.published_time = item.published;
+            article.source_name = item.source;
+            article.categories = item.categories;
+        }
+        const std::string role = body.get("role").as_string();
+        if (!role.empty() && !find_role(role)) return json_response(400, error_json("unknown_role", "Use one of /api/v1/roles"));
+        if (news_id.empty() && !article.url.empty()) {
             const ParsedPage page = read_url(article.url, 25, true);
             if (!page.ok()) return json_response(422, error_json("parse_failed", page.error));
             if (article.title.empty()) article.title = page.title;
@@ -357,10 +372,10 @@ Response route(const Request& request, const ServerConfig& config, AppServices& 
             if (article.text.empty()) article.text = page.content_markdown;
             if (article.source_name.empty()) article.source_name = "Внешняя новость";
         }
-        if (article.text.empty()) return json_response(400, error_json("article_required", "Provide either url or text"));
+        if (article.text.empty()) return json_response(400, error_json("article_required", "Provide news_id, url or text"));
         if (article.text.size() > 30000 || article.title.size() > 1000 || article.url.size() > 4096)
             return json_response(413, error_json("article_too_large", "Article text or metadata exceeds the limit"));
-        const auto insight = agent.analyze(company_id, article);
+        const auto insight = agent.analyze(company_id, article, role.empty() ? "ceo" : role);
         const auto insight_error = insight.get("error").as_string();
         return json_response(insight_error.empty() ? 200 : insight_error == "company_not_found" ? 404 : 400, insight);
     }
@@ -374,7 +389,10 @@ Response route(const Request& request, const ServerConfig& config, AppServices& 
         try { body = parse_body(request); } catch (const std::exception& e) { return json_response(400, error_json("invalid_json", e.what())); }
         const std::string question = body.get("question").as_string();
         if (question.size() > 2000) return json_response(413, error_json("question_too_large", "Question exceeds 2000 characters"));
-        const json::Value answer = agent.follow_up(id, question);
+        const std::string lens = body.get("lens").as_string();
+        if (!lens.empty() && lens != "risks" && lens != "counterparties" && lens != "treasury" && lens != "scenarios" && lens != "sources")
+            return json_response(400, error_json("unknown_lens", "lens must be one of risks, counterparties, treasury, scenarios, sources"));
+        const json::Value answer = agent.follow_up(id, question, lens);
         const auto error = answer.get("error").as_string();
         return json_response(error.empty() ? 200 : error == "question_empty" ? 400 : 404, answer);
     }
