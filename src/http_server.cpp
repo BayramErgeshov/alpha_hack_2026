@@ -3,6 +3,7 @@
 #include "json.hpp"
 #include "reader.hpp"
 #include "llm_client.hpp"
+#include "feed.hpp"
 
 #include <algorithm>
 #include <array>
@@ -209,8 +210,10 @@ json::Value parse_body(const Request& request) {
     return json::Value::parse(request.body);
 }
 
-Response route(const Request& request, const ServerConfig& config, const DataStore& data,
-    const AnalyticsIndex& analytics, InsightAgent& agent) {
+Response route(const Request& request, const ServerConfig& config, AppServices& app) {
+    const DataStore& data = app.data;
+    const AnalyticsIndex& analytics = app.analytics;
+    InsightAgent& agent = app.agent;
     const std::string path = path_only(request.target);
     const auto query = parse_query(request.target);
     if (request.method == "GET" && path == "/health") {
@@ -254,6 +257,40 @@ Response route(const Request& request, const ServerConfig& config, const DataSto
         }
         for (const auto* company : data.search(it->second, limit)) result["items"].push_back(data.profile_json(*company));
         return json_response(200, result);
+    }
+    if (request.method == "GET" && path == "/api/v1/roles") {
+        json::Value value = json::Value::object();
+        value["items"] = roles_json();
+        return json_response(200, value);
+    }
+    if (request.method == "GET" && path == "/api/v1/news") {
+        size_t limit = 50;
+        if (const auto lim = query.find("limit"); lim != query.end()) {
+            try { limit = std::clamp<size_t>(std::stoul(lim->second), 1, 500); } catch (...) {}
+        }
+        json::Value value = json::Value::object();
+        value["total"] = static_cast<long long>(app.news.size());
+        value["items"] = json::Value::array();
+        for (const auto& item : app.news.recent(limit)) value["items"].push_back(news_to_json(item));
+        return json_response(200, value);
+    }
+    if (request.method == "POST" && path == "/api/v1/news/refresh") {
+        return json_response(200, app.collector.refresh_now());
+    }
+    if (request.method == "GET" && path.rfind("/api/v1/companies/", 0) == 0 && path.size() > 5 &&
+        path.compare(path.size() - 5, 5, "/feed") == 0) {
+        const std::string id = percent_decode(path.substr(18, path.size() - 18 - 5), false);
+        if (!safe_id(id)) return json_response(400, error_json("invalid_company_id", "Company id contains unsupported characters"));
+        const auto* company = data.find(id);
+        if (!company) return json_response(404, error_json("company_not_found", "Company id was not found in the dataset"));
+        const auto role_it = query.find("role");
+        const std::string role = role_it == query.end() ? "ceo" : role_it->second;
+        if (!role.empty() && !find_role(role)) return json_response(400, error_json("unknown_role", "Use one of /api/v1/roles"));
+        size_t limit = 20;
+        if (const auto lim = query.find("limit"); lim != query.end()) {
+            try { limit = std::clamp<size_t>(std::stoul(lim->second), 1, 100); } catch (...) {}
+        }
+        return json_response(200, build_feed(data, analytics, app.news, *company, role, limit));
     }
     if (request.method == "GET" && path.rfind("/api/v1/companies/", 0) == 0) {
         std::string tail = path.substr(std::string("/api/v1/companies/").size());
@@ -378,8 +415,7 @@ void write_response(socket_t client, const Response& response) {
     send_all(client, head.str() + response.body);
 }
 
-void serve_one(socket_t client, const ServerConfig& config, const DataStore& data,
-    const AnalyticsIndex& analytics, InsightAgent& agent) {
+void serve_one(socket_t client, const ServerConfig& config, AppServices& app) {
     const auto started = std::chrono::steady_clock::now();
     Request request;
     int status = 500;
@@ -390,7 +426,7 @@ void serve_one(socket_t client, const ServerConfig& config, const DataStore& dat
         response = json_response(parse_status, error_json("bad_request", parse_error));
     } else {
         try {
-            response = route(request, config, data, analytics, agent);
+            response = route(request, config, app);
         } catch (const std::exception&) {
             response = json_response(500, error_json("internal_error", "Request could not be processed"));
         } catch (...) {
@@ -407,8 +443,7 @@ void serve_one(socket_t client, const ServerConfig& config, const DataStore& dat
 }
 } // namespace
 
-int run_http_server(const ServerConfig& config, const DataStore& data,
-    const AnalyticsIndex& analytics, InsightAgent& agent) {
+int run_http_server(const ServerConfig& config, AppServices& app) {
     socket_t listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (listener == invalid_socket) { std::cerr << "Could not create HTTP socket\n"; return 1; }
     int reuse = 1;
@@ -448,7 +483,7 @@ int run_http_server(const ServerConfig& config, const DataStore& data,
             close_socket(client);
             continue;
         }
-        std::thread(serve_one, client, std::cref(config), std::cref(data), std::cref(analytics), std::ref(agent)).detach();
+        std::thread(serve_one, client, std::cref(config), std::ref(app)).detach();
     }
 }
 

@@ -3,6 +3,8 @@
 
 #include "data_store.hpp"
 #include "news.hpp"
+#include "feed.hpp"
+#include "analytics.hpp"
 
 #include <cstdlib>
 #include <algorithm>
@@ -18,6 +20,37 @@ const DataStore& store() {
         return s;
     }();
     return *instance;
+}
+const AnalyticsIndex& analytics() {
+    static std::unique_ptr<AnalyticsIndex> instance = [] {
+        auto a = std::make_unique<AnalyticsIndex>();
+        std::string error;
+        if (!a->load("data/analytics", error)) throw std::runtime_error("analytics: " + error);
+        return a;
+    }();
+    return *instance;
+}
+
+void seed(NewsStore& news) {
+    std::string error;
+    if (!news.load_seed("data/news/seed.json", error)) throw std::runtime_error(error);
+}
+
+CompanyProfile profile(const std::string& id, const std::string& industry, bool loans, bool fts) {
+    CompanyProfile p;
+    p.id = id; p.industry = industry; p.region = "Москва"; p.revenue = 4e10; p.loans = loans; p.fts = fts;
+    return p;
+}
+
+std::vector<std::string> feed_ids(const json::Value& feed) {
+    std::vector<std::string> ids;
+    for (const auto& item : feed.get("items").as_array()) ids.push_back(item.get("news_id").as_string());
+    return ids;
+}
+
+bool has_category(const json::Value& item, const std::string& key) {
+    for (const auto& c : item.get("categories").as_array()) if (c.as_string() == key) return true;
+    return false;
 }
 } // namespace
 
@@ -123,6 +156,84 @@ TEST(news_seed_loads) {
         CHECK(item.url.rfind("https://", 0) == 0);
         CHECK(!item.categories.empty());
     }
+}
+
+TEST(feed_changes_with_company) {
+    NewsStore news; seed(news);
+    const CompanyProfile coal = profile("T_COAL", "Добыча и обогащение угля", false, true);
+    const CompanyProfile builder = profile("T_BUILD", "Строительство жилых и нежилых зданий", true, false);
+    const json::Value a = build_feed(store(), analytics(), news, coal, "ceo", 10);
+    const json::Value b = build_feed(store(), analytics(), news, builder, "ceo", 10);
+    CHECK(a.get("items").as_array().size() == 10);
+    CHECK(feed_ids(a) != feed_ids(b));
+    const auto& top_coal = a.get("items").as_array().front();
+    CHECK(top_coal.get("title").as_string().find("гол") != std::string::npos || has_category(top_coal, "commodity"));
+    const auto& top_builder = b.get("items").as_array().front();
+    CHECK(has_category(top_builder, "rate") || top_builder.get("title").as_string().find("новострой") != std::string::npos);
+    CHECK(!top_builder.get("why_for_you").as_string().empty());
+}
+
+TEST(feed_changes_with_role) {
+    NewsStore news; seed(news);
+    const CompanyProfile pipes = profile("T_PIPE", "Производство стальных труб", true, true);
+    const json::Value treasurer = build_feed(store(), analytics(), news, pipes, "treasurer", 31);
+    const json::Value ceo = build_feed(store(), analytics(), news, pipes, "ceo", 31);
+    CHECK(feed_ids(treasurer) != feed_ids(ceo));
+    const auto first_currency = [](const json::Value& feed) {
+        const auto& items = feed.get("items").as_array();
+        for (size_t i = 0; i < items.size(); ++i) if (has_category(items[i], "currency")) return i;
+        return items.size();
+    };
+    CHECK(first_currency(treasurer) <= first_currency(ceo));
+    CHECK(treasurer.get("role").get("id").as_string() == "treasurer");
+}
+
+TEST(feed_handles_missing_dates) {
+    NewsStore news; seed(news);
+    NewsItem undated;
+    undated.title = "Банк России изменил требования к кредитам строительным компаниям";
+    undated.url = "https://example.ru/undated";
+    undated.source = "Тест";
+    news.add(undated);
+    const CompanyProfile builder = profile("T_BUILD", "Строительство жилых и нежилых зданий", true, false);
+    const json::Value feed = build_feed(store(), analytics(), news, builder, "cfo", 40);
+    const auto& items = feed.get("items").as_array();
+    size_t position = items.size();
+    for (size_t i = 0; i < items.size(); ++i) if (items[i].get("url").as_string() == "https://example.ru/undated") position = i;
+    CHECK(position < items.size() - 1);
+    CHECK(items[position].get("published").is_null());
+}
+
+TEST(feed_company_with_blank_fields) {
+    NewsStore news; seed(news);
+    CompanyProfile blank;
+    blank.id = "T_BLANK";
+    const json::Value feed = build_feed(store(), analytics(), news, blank, "owner", 5);
+    CHECK(feed.get("items").as_array().size() == 5);
+    bool unknown_noted = false;
+    for (const auto& note : feed.get("data_gaps").as_array()) if (!note.as_string().empty()) unknown_noted = true;
+    CHECK(unknown_noted);
+}
+
+TEST(roles_have_five_entries) {
+    CHECK(roles().size() == 5);
+    CHECK(find_role("cfo") != nullptr);
+    CHECK(find_role("nobody") == nullptr);
+}
+
+TEST(matching_uses_word_starts_not_substrings) {
+    const auto shop = classify_news("Сеть магазинов открыла новый ресурс для покупателей");
+    CHECK(std::find(shop.begin(), shop.end(), "commodity") == shop.end());
+    CHECK(std::find(shop.begin(), shop.end(), "currency") == shop.end());
+    NewsStore news; seed(news);
+    const CompanyProfile retail = profile("T_SHOP", "Торговля розничная в неспециализированных магазинах", false, false);
+    const json::Value rel = score_relevance(retail, "Экспорт угля встал", "Вывоз угля через порты встал с августа",
+        classify_news("Экспорт угля встал"), {}, role_or_default("ceo"));
+    CHECK(rel.get("direct_industry_topic").is_null());
+    const CompanyProfile metal = profile("T_MET", "Торговля оптовая металлами и металлическими рудами", false, false);
+    const json::Value rel2 = score_relevance(metal, "Экспорт угля встал", "Вывоз через порты встал с августа",
+        classify_news("Экспорт угля встал"), {}, role_or_default("ceo"));
+    CHECK(rel2.get("direct_industry_topic").is_null());
 }
 
 int main(int argc, char** argv) { return run_all_tests(argc > 1 ? argv[1] : ""); }

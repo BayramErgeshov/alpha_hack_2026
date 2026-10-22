@@ -4,6 +4,9 @@
 #include "data_store.hpp"
 #include "http_server.hpp"
 #include "llm_client.hpp"
+#include "news.hpp"
+
+#include <filesystem>
 
 #include <curl/curl.h>
 
@@ -72,14 +75,27 @@ int main() {
     if (!llm.configured()) std::cerr << "LLM is not configured; deterministic analysis fallback is active\n";
     if (llm.configured() && !allowed_llm_base_url(llm.base_url))
         std::cerr << "LLM endpoint is outside the case allowlist; LLM requests will be rejected\n";
+    NewsStore news;
+    const std::string news_seed = env("ALFA_NEWS_SEED", "data/news/seed.json");
+    if (!news.load_seed(news_seed, error)) std::cerr << "News seed not loaded: " << error << '\n';
+    const std::string work_dir = env("ALFA_WORK_DIR", "work");
+    std::error_code fs_error;
+    std::filesystem::create_directories(work_dir, fs_error);
+    const std::string news_state = (std::filesystem::path(work_dir) / "news.json").string();
+    news.load_state(news_state);
+    NewsCollector collector(news, news_state);
+    int refresh_minutes = 30;
+    try { refresh_minutes = std::clamp(std::stoi(env("ALFA_NEWS_REFRESH_MINUTES", "30")), 0, 24 * 60); } catch (...) {}
+    collector.start(refresh_minutes);
     InsightAgent agent(data, analytics, llm);
     ServerConfig server;
     server.host = env("ALFA_HOST", "127.0.0.1");
     server.port = port_from_env();
     server.api_token = env("ALFA_API_TOKEN", "");
     std::cout << "Loaded " << data.company_count() << " companies and " << analytics.document_count()
-        << " bank analytical documents\n";
-    const int result = run_http_server(server, data, analytics, agent);
+        << " bank analytical documents, " << news.size() << " news items\n";
+    AppServices app{ data, analytics, agent, news, collector };
+    const int result = run_http_server(server, app);
     curl_global_cleanup();
 #ifdef _WIN32
     WSACleanup();

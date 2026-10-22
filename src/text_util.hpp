@@ -77,4 +77,30 @@ inline bool contains_any(const std::string& lowered, std::initializer_list<const
     return false;
 }
 
+inline bool contains_any(const std::string& lowered, const std::vector<const char*>& needles) {
+    for (const char* n : needles) if (lowered.find(n) != std::string::npos) return true;
+    return false;
+}
+
+// Word-start matching: a needle matches when some word of the text starts with it
+// ("сталь" matches "стальной" but not "встал"). Needles with a space or hyphen are
+// matched as plain substrings of the lowered text.
+class WordIndex {
+public:
+    explicit WordIndex(const std::string& text) : lowered_(lower(text)), words_(words(text, 1)) {}
+    bool any(std::initializer_list<const char*> needles) const { for (const char* n : needles) if (match(n)) return true; return false; }
+    bool any(const std::vector<const char*>& needles) const { for (const char* n : needles) if (match(n)) return true; return false; }
+    bool match(const char* needle) const {
+        const std::string n(needle);
+        if (n.find(' ') != std::string::npos || n.find('-') != std::string::npos) return lowered_.find(n) != std::string::npos;
+        for (const auto& w : words_) if (w.compare(0, n.size(), n) == 0) return true;
+        return false;
+    }
+    const std::string& lowered() const { return lowered_; }
+
+private:
+    std::string lowered_;
+    std::vector<std::string> words_;
+};
+
 } // namespace textutil

@@ -3,6 +3,7 @@
 #include "agent.hpp"
 #include "analytics.hpp"
 #include "data_store.hpp"
+#include "news.hpp"
 
 #include <string>
 
@@ -12,6 +13,14 @@ struct ServerConfig {
     std::string api_token;
 };
 
-int run_http_server(const ServerConfig& config, const DataStore& data,
-    const AnalyticsIndex& analytics, InsightAgent& agent);
+// Everything a request handler may use. Owned by main(); lives for the whole process.
+struct AppServices {
+    const DataStore& data;
+    const AnalyticsIndex& analytics;
+    InsightAgent& agent;
+    NewsStore& news;
+    NewsCollector& collector;
+};
+
+int run_http_server(const ServerConfig& config, AppServices& app);
 

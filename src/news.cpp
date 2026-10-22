@@ -181,14 +181,14 @@ NewsItem item_from_json(const json::Value& v) {
 } // namespace
 
 std::vector<std::string> classify_news(const std::string& text) {
-    const std::string t = textutil::lower(text);
+    const textutil::WordIndex t(text);
     std::vector<std::string> out;
     const auto add = [&](const char* key, std::initializer_list<const char*> needles) {
-        if (textutil::contains_any(t, needles)) out.push_back(key);
+        if (t.any(needles)) out.push_back(key);
     };
     add("rate", { "ключев", "ставк", "кредит", "ипотек", "заемщик", "облигац", "доходност", "офз", "денежно-кредит" });
     add("currency", { "курс", "рубл", "доллар", "евро", "юан", "валют", "экспорт", "импорт" });
-    add("commodity", { "нефт", "газ", "brent", "металл", "сталь", "никел", "алюмин", "медь", "золот", "угол", "угл", "зерн", "пшениц", "удобрен", "сырь" });
+    add("commodity", { "нефт", "газ", "brent", "металл", "сталь", "никел", "алюмин", "медь", "золот", "угол", "угл", "уголь", "зерн", "пшениц", "удобрен", "сырь" });
     add("logistics", { "логист", "перевоз", "фрахт", "порт", "ржд", "контейнер", "поставк", "грузо" });
     add("sanctions", { "санкц", "эмбарго", "ограничени", "запрет на" });
     add("demand", { "спрос", "потреблен", "продаж", "розниц", "инфляц", "цены", "выручк" });

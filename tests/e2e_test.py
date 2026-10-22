@@ -101,6 +101,39 @@ def clients_endpoint_lists_large_companies():
     assert status == 200 and all(i["industry"] == industry for i in sub["items"]), sub
 
 
+# ---------------------------------------------------------------- news and feed
+@test
+def feed_endpoint_changes_with_company_and_role():
+    srv = server()
+    status, roles, _ = srv.get("/api/v1/roles")
+    assert status == 200 and len(roles["items"]) == 5, roles
+    status, news, _ = srv.get("/api/v1/news?limit=50")
+    assert status == 200 and len(news["items"]) >= 30, news
+    _, clients, _ = srv.get("/api/v1/clients?limit=60")
+    feeds = {}
+    for c in clients["items"]:
+        status, feed, _ = srv.get("/api/v1/companies/%s/feed?role=cfo&limit=8" % c["id"])
+        assert status == 200, feed
+        feeds[c["id"]] = [i["news_id"] for i in feed["items"]]
+    assert len(set(tuple(v) for v in feeds.values())) > 3, "feed must differ between companies"
+    first = clients["items"][0]["id"]
+    _, a, _ = srv.get("/api/v1/companies/%s/feed?role=treasurer&limit=31" % first)
+    _, b, _ = srv.get("/api/v1/companies/%s/feed?role=accountant&limit=31" % first)
+    assert [i["news_id"] for i in a["items"]] != [i["news_id"] for i in b["items"]], "role must change the feed"
+    item = a["items"][0]
+    for key in ("title", "url", "why_for_you", "relevance", "categories", "bank_hint"):
+        assert key in item, key
+    status, missing, _ = srv.get("/api/v1/companies/U_NOPE_0/feed")
+    assert status == 404, missing
+
+
+@test
+def news_refresh_reports_each_source():
+    status, report, _ = server().post("/api/v1/news/refresh", {})
+    assert status == 200, report
+    assert len(report["sources"]) == 6 and "added" in report, report
+
+
 def main():
     failed = 0
     ran = 0
