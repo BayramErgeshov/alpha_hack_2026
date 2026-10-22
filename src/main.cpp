@@ -9,6 +9,9 @@
 #include "metrics.hpp"
 
 #include <filesystem>
+#if defined(__GLIBC__)
+#include <malloc.h>
+#endif
 
 #include <curl/curl.h>
 
@@ -77,6 +80,9 @@ int main() {
     if (!llm.configured()) std::cerr << "LLM is not configured; deterministic analysis fallback is active\n";
     if (llm.configured() && !allowed_llm_base_url(llm.base_url))
         std::cerr << "LLM endpoint is outside the case allowlist; LLM requests will be rejected\n";
+#if defined(__GLIBC__)
+    malloc_trim(0); // CSV loading leaves large freed blocks; return them to the OS (matters on 512 MB hosts)
+#endif
     NewsStore news;
     const std::string news_seed = env("ALFA_NEWS_SEED", "data/news/seed.json");
     if (!news.load_seed(news_seed, error)) std::cerr << "News seed not loaded: " << error << '\n';

@@ -1,0 +1,10 @@
+# Pinned toolchain and dependencies (equivalent of a lock file for a C++ project without a package manager).
+# The Docker image is the reference build; versions below are what Debian 12 "bookworm" ships.
+language        C++20
+compiler        GCC 12.2 (Debian 12)        ; also tested with GCC 13.3 (Ubuntu 24.04)
+build           CMake >= 3.21 (Debian 12: 3.25.1)
+libcurl         7.88.1 (Debian 12 libcurl4)  ; minimum 7.85 (CURLOPT_PROTOCOLS_STR); tested with 8.5.0
+base image      debian:bookworm-slim
+json            in-tree src/json.hpp (no external JSON library)
+tests           in-tree tests/test_harness.hpp; e2e: Python 3.10+ standard library only
+data prep       scripts/requirements.txt: pypdfium2==5.14.0, Pillow==12.3.0 (only to re-extract PDFs)

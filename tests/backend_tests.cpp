@@ -350,4 +350,15 @@ TEST(feedback_updates_metrics) {
     CHECK(snap.get("budget").get("limit_tokens").as_number() == 100);
 }
 
+TEST(feed_scores_do_not_saturate) {
+    NewsStore news; seed(news);
+    CompanyProfile trader = profile("T_OIL", "Торговля оптовая твердым, жидким и газообразным топливом", true, true);
+    trader.deposits = true; trader.leasing = true; trader.payments_in = 1e9;
+    const json::Value feed = build_feed(store(), analytics(), news, trader, "treasurer", 31);
+    int saturated = 0;
+    for (const auto& item : feed.get("items").as_array()) if (item.get("relevance").get("score").as_number() >= 0.99) ++saturated;
+    CHECK(saturated <= 1);
+    CHECK(feed.get("items").as_array().front().get("relevance").get("band").as_string() == "high");
+}
+
 int main(int argc, char** argv) { return run_all_tests(argc > 1 ? argv[1] : ""); }

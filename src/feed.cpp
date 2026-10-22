@@ -183,11 +183,14 @@ json::Value score_relevance(const CompanyProfile& company, const std::string& ti
     }
     if (!role_topic.empty())
         reasons.push_back("Для роли «" + role.title + "» приоритетна тема «" + news_category_label(role_topic) + "»");
-    score = std::min(1.0, score * role_factor);
+    // Soft cap: many signals add up to high relevance without saturating at 100%,
+    // so the feed still distinguishes strong from very strong matches.
+    const double raw = score * role_factor;
+    score = std::min(0.99, raw / (1.0 + 0.45 * raw));
 
     json::Value result = json::Value::object();
     result["score"] = std::round(score * 1000.0) / 1000.0;
-    result["band"] = score >= 0.6 ? "high" : score >= 0.35 ? "medium" : "low";
+    result["band"] = score >= 0.5 ? "high" : score >= 0.3 ? "medium" : "low";
     result["reasons"] = std::move(reasons);
     result["event_categories"] = json::Value::array();
     for (const auto& c : categories) result["event_categories"].push_back(news_category_label(c));
