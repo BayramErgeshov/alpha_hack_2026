@@ -1,0 +1,162 @@
+openapi: 3.1.0
+info:
+  title: Alpha News Analytics Backend
+  version: 1.0.0
+  description: >-
+    C++ backend for page parsing, company profiles and personalized insights.
+    Authentication is enforced only when ALFA_API_TOKEN is configured; /health is public.
+    Requests are synchronous. A 200 insight can use deterministic_fallback instead of an LLM.
+    Limits on text fields are UTF-8 byte limits, not Unicode character counts.
+    Response field contracts and TypeScript types are documented in docs/FRONTEND.md.
+servers:
+  - url: http://127.0.0.1:8080
+security:
+  - ApiKeyAuth: []
+  - HeaderToken: []
+paths:
+  /health:
+    get:
+      security: []
+      summary: Service health
+      responses:
+        '200':
+          description: Service is running
+  /api/v1/models:
+    get:
+      summary: List case-allowed models
+      responses:
+        '200':
+          description: Model list and whether an API key is configured
+  /api/v1/companies:
+    get:
+      summary: Search company profiles
+      parameters:
+        - in: query
+          name: q
+          required: true
+          description: Exact case-insensitive synthetic company identifier or exact OKVED code; no name or substring search.
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        '200': { description: Matching profiles }
+        '400': { description: Missing query }
+  /api/v1/companies/{company_id}:
+    get:
+      summary: Get a company profile
+      parameters:
+        - $ref: '#/components/parameters/CompanyId'
+      responses:
+        '200': { description: Company profile }
+        '404': { description: Company not found }
+  /api/v1/companies/{company_id}/network:
+    get:
+      summary: Get aggregated payment network
+      parameters:
+        - $ref: '#/components/parameters/CompanyId'
+      responses:
+        '200': { description: Payment network aggregates }
+        '404': { description: Company not found }
+  /api/v1/analytics/search:
+    get:
+      summary: Search bank analytical materials
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 20, default: 5 }
+      responses:
+        '200': { description: Ranked passages with document name, source page and text_extraction provenance }
+  /api/v1/parse:
+    post:
+      summary: Parse a public web page
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url: { type: string, format: uri, description: Public HTTP(S) URL; at most 4096 UTF-8 bytes. }
+                mode: { type: string, enum: [jina, raw], default: jina }
+      responses:
+        '200': { description: Jina-style markdown plus extracted metadata }
+        '400': { description: Invalid JSON or missing URL }
+        '401': { description: Missing or invalid API token when configured }
+        '422': { description: Page could not be parsed or URL was rejected }
+  /api/v1/insights:
+    post:
+      summary: Analyze news for a company
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [company_id]
+              anyOf:
+                - required: [url]
+                  properties:
+                    url: { type: string, minLength: 1 }
+                - required: [text]
+                  properties:
+                    text: { type: string, minLength: 1 }
+              description: Supply a URL or article text. When a nonempty URL is supplied, it is always fetched even if text is also supplied.
+              properties:
+                company_id: { type: string, example: U_9250 }
+                url: { type: string, description: Empty or a public HTTP(S) URL; at most 4096 UTF-8 bytes. }
+                title: { type: string, description: At most 1000 UTF-8 bytes. }
+                text: { type: string, description: At most 30000 UTF-8 bytes. }
+                published_time: { type: string }
+                source_name: { type: string }
+      responses:
+        '200': { description: Evidence-linked analysis; generation.method indicates LLM or deterministic fallback }
+        '400': { description: Invalid JSON, missing or empty article, or invalid company identifier }
+        '401': { description: Missing or invalid API token when configured }
+        '413': { description: Article or metadata exceeds a UTF-8 byte limit }
+        '404': { description: Company not found }
+        '422': { description: News URL could not be parsed }
+  /api/v1/insights/{insight_id}/questions:
+    post:
+      summary: Ask a follow-up question about an in-memory insight
+      parameters:
+        - in: path
+          name: insight_id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                question: { type: string, minLength: 1, description: At most 2000 UTF-8 bytes; whitespace-only questions are rejected. }
+      responses:
+        '200': { description: Answer with source references }
+        '400': { description: Empty question, invalid JSON, or invalid insight identifier }
+        '401': { description: Missing or invalid API token when configured }
+        '413': { description: Question exceeds 2000 UTF-8 bytes }
+        '404': { description: Insight not found in current process }
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+    HeaderToken:
+      type: apiKey
+      in: header
+      name: x-api-key
+  parameters:
+    CompanyId:
+      in: path
+      name: company_id
+      required: true
+      schema: { type: string, pattern: '^[A-Za-z0-9_-]{1,128}$' }

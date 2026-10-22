@@ -1,0 +1,17 @@
+services:
+  alpha-backend:
+    build: .
+    ports:
+      - "127.0.0.1:${ALFA_PORT:-8080}:8080"
+    environment:
+      ALFA_HOST: 0.0.0.0
+      ALFA_PORT: 8080
+      ALFA_API_TOKEN: ${ALFA_API_TOKEN:-}
+      ALFA_LLM_API_KEY: ${ALFA_LLM_API_KEY:-}
+      ALFA_LLM_BASE_URL: ${ALFA_LLM_BASE_URL:-https://changellenge.up.railway.app/v1}
+      ALFA_LLM_MODEL: ${ALFA_LLM_MODEL:-deepseek/deepseek-v4.1-flash}
+      ALFA_LLM_TIMEOUT_SECONDS: ${ALFA_LLM_TIMEOUT_SECONDS:-35}
+      ALFA_AGENT_SELF_CHECK: ${ALFA_AGENT_SELF_CHECK:-1}
+    volumes:
+      - ./data:/app/data:ro
+    restart: unless-stopped

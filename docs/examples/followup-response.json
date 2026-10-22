@@ -1,0 +1,14 @@
+{
+    "answer":  "Для уточнения доступен исходный анализ и перечисленные в нем источники. Без подключенной разрешенной модели дополнительный вывод не формировался.",
+    "evidence_ids":  [
+                         "N1",
+                         "C1",
+                         "A1",
+                         "A2",
+                         "A3",
+                         "A4"
+                     ],
+    "insight_id":  "insight-1792656194512-1",
+    "method":  "deterministic_fallback",
+    "question":  "Explain the available sources"
+}

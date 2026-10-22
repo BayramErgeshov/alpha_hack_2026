@@ -1,0 +1,431 @@
+{
+  "schema_version": "1.0",
+  "source_archive": "Аналитические материалы-20261021T121614Z-1-001.zip",
+  "documents": [
+    {
+      "source_file": "Аналитические материалы/ALFA_Russian_Steels_1К21PreviewUpdate_15Apr2021.pdf",
+      "source_sha256": "36eaaa58ae68d858db3600dbf3cc93d0bdefb8ca03f1f5cc154c532cc32e0c86",
+      "text_file": "ALFA_Russian_Steels_1К21PreviewUpdate_15Apr2021.md",
+      "extraction": "windows_ocr",
+      "pages": [
+        {
+          "page": 1,
+          "method": "windows_ocr",
+          "characters": 6196
+        },
+        {
+          "page": 2,
+          "method": "windows_ocr",
+          "characters": 2622
+        },
+        {
+          "page": 3,
+          "method": "windows_ocr",
+          "characters": 2517
+        },
+        {
+          "page": 4,
+          "method": "windows_ocr",
+          "characters": 3479
+        }
+      ],
+      "page_count": 4,
+      "pages_with_text": 4,
+      "text_characters": 14814
+    },
+    {
+      "source_file": "Аналитические материалы/Inflation_tracker_02.pdf",
+      "source_sha256": "09d5537f6a52f5f8f2d9518ed9171e794382972ce38cbdc4bd3099b2db129d0c",
+      "text_file": "Inflation_tracker_02.md",
+      "extraction": "windows_ocr",
+      "pages": [
+        {
+          "page": 1,
+          "method": "windows_ocr",
+          "characters": 2960
+        },
+        {
+          "page": 2,
+          "method": "windows_ocr",
+          "characters": 1531
+        },
+        {
+          "page": 3,
+          "method": "windows_ocr",
+          "characters": 3477
+        }
+      ],
+      "page_count": 3,
+      "pages_with_text": 3,
+      "text_characters": 7968
+    },
+    {
+      "source_file": "Аналитические материалы/ALFA-7M26.pdf",
+      "source_sha256": "3c64c1e43f3b46a795f9581967f2dbc8efb0994cb77ab82e95da180830e9ff8c",
+      "text_file": "ALFA-7M26.md",
+      "extraction": "windows_ocr",
+      "pages": [
+        {
+          "page": 1,
+          "method": "windows_ocr",
+          "characters": 4059
+        },
+        {
+          "page": 2,
+          "method": "windows_ocr",
+          "characters": 3522
+        },
+        {
+          "page": 3,
+          "method": "windows_ocr",
+          "characters": 1158
+        },
+        {
+          "page": 4,
+          "method": "windows_ocr",
+          "characters": 3479
+        }
+      ],
+      "page_count": 4,
+      "pages_with_text": 4,
+      "text_characters": 12218
+    },
+    {
+      "source_file": "Аналитические материалы/ALFA-Macro_Insights-Policy_Rate_11Sep.pdf",
+      "source_sha256": "92a96805f2b720f76bd0c52d2491044812b38401ab62d0f4a9157b4ca81c49bb",
+      "text_file": "ALFA-Macro_Insights-Policy_Rate_11Sep.md",
+      "extraction": "windows_ocr",
+      "pages": [
+        {
+          "page": 1,
+          "method": "windows_ocr",
+          "characters": 5258
+        },
+        {
+          "page": 2,
+          "method": "windows_ocr",
+          "characters": 1536
+        },
+        {
+          "page": 3,
+          "method": "windows_ocr",
+          "characters": 1515
+        },
+        {
+          "page": 4,
+          "method": "windows_ocr",
+          "characters": 3479
+        }
+      ],
+      "page_count": 4,
+      "pages_with_text": 4,
+      "text_characters": 11788
+    },
+    {
+      "source_file": "Аналитические материалы/ALFA-macro_stat1H26.pdf",
+      "source_sha256": "84899553fadf3e49abac7074c7b7d2afc2fa5c70b7fde0bf4c3eabe3d7402266",
+      "text_file": "ALFA-macro_stat1H26.md",
+      "extraction": "windows_ocr",
+      "pages": [
+        {
+          "page": 1,
+          "method": "windows_ocr",
+          "characters": 3197
+        },
+        {
+          "page": 2,
+          "method": "windows_ocr",
+          "characters": 4772
+        },
+        {
+          "page": 3,
+          "method": "windows_ocr",
+          "characters": 4110
+        },
+        {
+          "page": 4,
+          "method": "windows_ocr",
+          "characters": 1997
+        },
+        {
+          "page": 5,
+          "method": "windows_ocr",
+          "characters": 3465
+        }
+      ],
+      "page_count": 5,
+      "pages_with_text": 5,
+      "text_characters": 17541
+    },
+    {
+      "source_file": "Аналитические материалы/ALFA-consumption.pdf",
+      "source_sha256": "807ee9925cf7d15ecffc72ad7142f9a83d342cd19690e12dd3b90aa2ba8ea1c6",
+      "text_file": "ALFA-consumption.md",
+      "extraction": "windows_ocr",
+      "pages": [
+        {
+          "page": 1,
+          "method": "windows_ocr",
+          "characters": 3920
+        },
+        {
+          "page": 2,
+          "method": "windows_ocr",
+          "characters": 3421
+        },
+        {
+          "page": 3,
+          "method": "windows_ocr",
+          "characters": 1861
+        },
+        {
+          "page": 4,
+          "method": "windows_ocr",
+          "characters": 3479
+        }
+      ],
+      "page_count": 4,
+      "pages_with_text": 4,
+      "text_characters": 12681
+    },
+    {
+      "source_file": "Аналитические материалы/Бонд_Бриф_14092026.pdf",
+      "source_sha256": "87dc17520e2a744f95580ee2ec42461d0ee6ebf19e752622a49c49600cb1b055",
+      "text_file": "Бонд_Бриф_14092026.md",
+      "extraction": "windows_ocr",
+      "pages": [
+        {
+          "page": 1,
+          "method": "windows_ocr",
+          "characters": 3667
+        },
+        {
+          "page": 2,
+          "method": "windows_ocr",
+          "characters": 1985
+        },
+        {
+          "page": 3,
+          "method": "windows_ocr",
+          "characters": 2081
+        },
+        {
+          "page": 4,
+          "method": "windows_ocr",
+          "characters": 789
+        },
+        {
+          "page": 5,
+          "method": "windows_ocr",
+          "characters": 3473
+        }
+      ],
+      "page_count": 5,
+      "pages_with_text": 5,
+      "text_characters": 11995
+    },
+    {
+      "source_file": "Аналитические материалы/Gold_digest_August26.pdf",
+      "source_sha256": "4159576a6223985dd318b6f5a04ad4aeb888f47a6c266d0e9ee9eb35bf01e245",
+      "text_file": "Gold_digest_August26.md",
+      "extraction": "windows_ocr",
+      "pages": [
+        {
+          "page": 1,
+          "method": "windows_ocr",
+          "characters": 30
+        },
+        {
+          "page": 2,
+          "method": "windows_ocr",
+          "characters": 5342
+        },
+        {
+          "page": 3,
+          "method": "windows_ocr",
+          "characters": 1280
+        },
+        {
+          "page": 4,
+          "method": "windows_ocr",
+          "characters": 1155
+        },
+        {
+          "page": 5,
+          "method": "windows_ocr",
+          "characters": 1689
+        },
+        {
+          "page": 6,
+          "method": "windows_ocr",
+          "characters": 628
+        },
+        {
+          "page": 7,
+          "method": "windows_ocr",
+          "characters": 1153
+        },
+        {
+          "page": 8,
+          "method": "windows_ocr",
+          "characters": 3486
+        }
+      ],
+      "page_count": 8,
+      "pages_with_text": 8,
+      "text_characters": 14763
+    },
+    {
+      "source_file": "Аналитические материалы/FI_Strategy_3Q26_22072026.pdf",
+      "source_sha256": "6c3a4882ee784b608880693d8ba2b62d0ba2236e34b404179adaab909c6dd046",
+      "text_file": "FI_Strategy_3Q26_22072026.md",
+      "extraction": "windows_ocr",
+      "pages": [
+        {
+          "page": 1,
+          "method": "windows_ocr",
+          "characters": 92
+        },
+        {
+          "page": 2,
+          "method": "windows_ocr",
+          "characters": 3102
+        },
+        {
+          "page": 3,
+          "method": "windows_ocr",
+          "characters": 4105
+        },
+        {
+          "page": 4,
+          "method": "windows_ocr",
+          "characters": 28
+        },
+        {
+          "page": 5,
+          "method": "windows_ocr",
+          "characters": 2222
+        },
+        {
+          "page": 6,
+          "method": "windows_ocr",
+          "characters": 2795
+        },
+        {
+          "page": 7,
+          "method": "windows_ocr",
+          "characters": 78
+        },
+        {
+          "page": 8,
+          "method": "windows_ocr",
+          "characters": 453
+        },
+        {
+          "page": 9,
+          "method": "windows_ocr",
+          "characters": 2942
+        },
+        {
+          "page": 10,
+          "method": "windows_ocr",
+          "characters": 3080
+        },
+        {
+          "page": 11,
+          "method": "windows_ocr",
+          "characters": 2140
+        },
+        {
+          "page": 12,
+          "method": "windows_ocr",
+          "characters": 3101
+        },
+        {
+          "page": 13,
+          "method": "windows_ocr",
+          "characters": 1734
+        },
+        {
+          "page": 14,
+          "method": "windows_ocr",
+          "characters": 94
+        },
+        {
+          "page": 15,
+          "method": "windows_ocr",
+          "characters": 1699
+        },
+        {
+          "page": 16,
+          "method": "windows_ocr",
+          "characters": 1984
+        },
+        {
+          "page": 17,
+          "method": "windows_ocr",
+          "characters": 2152
+        },
+        {
+          "page": 18,
+          "method": "windows_ocr",
+          "characters": 2430
+        },
+        {
+          "page": 19,
+          "method": "windows_ocr",
+          "characters": 2971
+        },
+        {
+          "page": 20,
+          "method": "windows_ocr",
+          "characters": 62
+        },
+        {
+          "page": 21,
+          "method": "windows_ocr",
+          "characters": 1992
+        },
+        {
+          "page": 22,
+          "method": "windows_ocr",
+          "characters": 1661
+        },
+        {
+          "page": 23,
+          "method": "windows_ocr",
+          "characters": 3688
+        },
+        {
+          "page": 24,
+          "method": "windows_ocr",
+          "characters": 2610
+        },
+        {
+          "page": 25,
+          "method": "windows_ocr",
+          "characters": 41
+        },
+        {
+          "page": 26,
+          "method": "windows_ocr",
+          "characters": 1881
+        },
+        {
+          "page": 27,
+          "method": "windows_ocr",
+          "characters": 3457
+        }
+      ],
+      "page_count": 27,
+      "pages_with_text": 27,
+      "text_characters": 52594
+    }
+  ],
+  "summary": {
+    "document_count": 9,
+    "page_count": 64,
+    "pages_with_text": 64,
+    "text_characters": 156362
+  }
+}

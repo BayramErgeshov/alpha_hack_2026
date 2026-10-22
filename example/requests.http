@@ -1,0 +1,65 @@
+# Для расширения REST Client в VS Code или другого HTTP-клиента.
+# Сначала запустите example\start.cmd. Все истории ниже синтетические.
+# Это отдельный demo-сервер, который запущен с -NoLlm на порту 18080.
+@baseUrl = http://127.0.0.1:18080
+# После запроса «Анализ учебной новости» вставьте его поле id вместо REPLACE_ME.
+# Новый процесс сервера не знает id из предыдущего процесса.
+@insightId = REPLACE_ME
+
+### Проверка готовности — 200
+GET {{baseUrl}}/health
+
+### Разрешённые модели и наличие конфигурации — 200, configured=false
+GET {{baseUrl}}/api/v1/models
+
+### Найти профиль по точному ID — 200
+GET {{baseUrl}}/api/v1/companies?q=U_9250&limit=5
+
+### Профиль компании — 200
+GET {{baseUrl}}/api/v1/companies/U_9250
+
+### Платёжная сеть компании — 200
+GET {{baseUrl}}/api/v1/companies/U_9250/network
+
+### Поиск банковских материалов — 200, число результатов зависит от корпуса
+GET {{baseUrl}}/api/v1/analytics/search?q=%D1%81%D1%82%D0%B0%D0%B2%D0%BA%D0%B0&limit=3
+
+### Анализ учебной новости о кредитовании — 200; скопируйте поле id
+POST {{baseUrl}}/api/v1/insights
+Content-Type: application/json
+
+< ./requests/insight-credit.json
+
+### Второй учебный сценарий: внешняя торговля — 200
+POST {{baseUrl}}/api/v1/insights
+Content-Type: application/json
+
+< ./requests/insight-trade.json
+
+### Уточняющий вопрос — 200 только после подстановки реального insightId
+POST {{baseUrl}}/api/v1/insights/{{insightId}}/questions
+Content-Type: application/json
+
+< ./requests/question.json
+
+### Пустой вопрос — ожидается 400; нужен реальный insightId
+POST {{baseUrl}}/api/v1/insights/{{insightId}}/questions
+Content-Type: application/json
+
+< ./requests/empty-question.json
+
+### Несуществующая компания — ожидается 404
+GET {{baseUrl}}/api/v1/companies/EXAMPLE_MISSING_COMPANY
+
+### Приватный URL — ожидается 422, запрос к внутреннему адресу отклоняется
+POST {{baseUrl}}/api/v1/parse
+Content-Type: application/json
+
+< ./requests/blocked-url.json
+
+### Необязательный внешний запрос: запускать вручную при доступе в интернет
+# Этот запрос обращается к публичному example.com. LLM не используется.
+POST {{baseUrl}}/api/v1/parse
+Content-Type: application/json
+
+< ./requests/parse-url.json

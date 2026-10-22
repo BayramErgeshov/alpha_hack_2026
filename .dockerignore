@@ -1,0 +1,14 @@
+.git
+.vs
+build
+out
+x64
+work
+AlphaBackend
+AlphaPdfOcr
+.env
+*.zip
+*.pdf
+*.docx
+test-results
+example

@@ -1,0 +1,62 @@
+{
+    "client_type":  "CLIENT",
+    "company_age_band":  "16-25",
+    "data_quality":  {
+                         "employee_data_available":  true,
+                         "industry_available":  true,
+                         "location_available":  true,
+                         "revenue_available":  true,
+                         "warning":  "Blank source fields are unknown, not zero or false"
+                     },
+    "development_stage":  "Бизнес в новой реальности",
+    "employees":  {
+                      "fns_band":  "Более 251",
+                      "spark_band":  null
+                  },
+    "financials":  {
+                       "annual_revenue_rub":  62340483339,
+                       "case_large_business_threshold_rub":  15000000000,
+                       "market_share":  null,
+                       "market_share_note":  "Not present in supplied data; dataset percentile is not market share",
+                       "meets_case_large_business_threshold":  true,
+                       "revenue_percentile_in_dataset_industry":  100
+                   },
+    "id":  "U_9250",
+    "industry":  {
+                     "category":  "Строительство",
+                     "name":  "Строительство прочих инженерных сооружений, не включенных в другие группировки",
+                     "okved_code":  "42.99"
+                 },
+    "location":  {
+                     "city":  "г. Иркутск",
+                     "region":  "Иркутская область"
+                 },
+    "network":  {
+                    "group_id":  "group_133188_sb",
+                    "group_member_count":  22,
+                    "linked_person_record_count":  0,
+                    "related_company_count":  21
+                },
+    "organization_type":  "КОММ_ОРГ",
+    "ownership":  "ЧАСТНАЯ СОБСТВЕННОСТЬ",
+    "payments":  {
+                     "incoming_amount_rub":  8265249000,
+                     "incoming_transaction_count":  169,
+                     "outgoing_amount_rub":  12997823000,
+                     "outgoing_transaction_count":  7394
+                 },
+    "products":  {
+                     "bank_guarantees":  true,
+                     "deposits":  false,
+                     "factoring":  false,
+                     "leasing":  true,
+                     "loans":  true,
+                     "rko":  true,
+                     "salary_project":  true
+                 },
+    "source":  "df_Uid_data_hack.csv; df_Uid_payment_hack.csv; df_Fid_Uid_link_hack.csv",
+    "trade":  {
+                  "fts_country":  "КИТАЙ",
+                  "has_fts_data":  true
+              }
+}

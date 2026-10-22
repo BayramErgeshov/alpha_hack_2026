@@ -1,0 +1,30 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.0.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{BC8A1FFA-BEE3-4634-8014-F334798102B3}") = "AlphaBackend", "AlphaBackend.vcxproj", "{7D6131C0-898C-4CB4-A298-E42BB00C18DF}"
+EndProject
+Project("{BC8A1FFA-BEE3-4634-8014-F334798102B3}") = "AlphaPdfOcr", "AlphaPdfOcr.vcxproj", "{A6AD9A97-8355-4BA0-A3B4-0836CC2857E1}"
+EndProject
+Project("{BC8A1FFA-BEE3-4634-8014-F334798102B3}") = "AlphaExampleClient", "example\ExampleClient.vcxproj", "{2ACD42E4-70B3-4B99-928D-0911FEA66E48}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2ACD42E4-70B3-4B99-928D-0911FEA66E48}.Debug|x64.ActiveCfg = Debug|x64
+		{2ACD42E4-70B3-4B99-928D-0911FEA66E48}.Debug|x64.Build.0 = Debug|x64
+		{2ACD42E4-70B3-4B99-928D-0911FEA66E48}.Release|x64.ActiveCfg = Release|x64
+		{2ACD42E4-70B3-4B99-928D-0911FEA66E48}.Release|x64.Build.0 = Release|x64
+		{A6AD9A97-8355-4BA0-A3B4-0836CC2857E1}.Debug|x64.ActiveCfg = Debug|x64
+		{A6AD9A97-8355-4BA0-A3B4-0836CC2857E1}.Debug|x64.Build.0 = Debug|x64
+		{A6AD9A97-8355-4BA0-A3B4-0836CC2857E1}.Release|x64.ActiveCfg = Release|x64
+		{A6AD9A97-8355-4BA0-A3B4-0836CC2857E1}.Release|x64.Build.0 = Release|x64
+		{7D6131C0-898C-4CB4-A298-E42BB00C18DF}.Debug|x64.ActiveCfg = Debug|x64
+		{7D6131C0-898C-4CB4-A298-E42BB00C18DF}.Debug|x64.Build.0 = Debug|x64
+		{7D6131C0-898C-4CB4-A298-E42BB00C18DF}.Release|x64.ActiveCfg = Release|x64
+		{7D6131C0-898C-4CB4-A298-E42BB00C18DF}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+EndGlobal
