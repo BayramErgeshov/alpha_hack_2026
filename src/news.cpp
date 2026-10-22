@@ -5,6 +5,7 @@
 #include "text_util.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <cstdio>
 #include <ctime>
