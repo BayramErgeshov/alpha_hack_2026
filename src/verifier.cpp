@@ -1,3 +1,4 @@
+#include "text_util.hpp"
 #include "verifier.hpp"
 
 #include <cctype>
@@ -53,7 +54,7 @@ json::Value verify_claims(const json::Value& draft, const std::unordered_set<std
         json::Value issue = json::Value::object();
         issue["code"] = code;
         issue["section"] = section;
-        issue["text"] = text.substr(0, 400);
+        issue["text"] = textutil::truncate_utf8(text, 400);
         issues.push_back(std::move(issue));
     };
 

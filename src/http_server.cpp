@@ -1,3 +1,4 @@
+#include "text_util.hpp"
 #include "http_server.hpp"
 
 #include "json.hpp"
@@ -336,7 +337,7 @@ Response route(const Request& request, const ServerConfig& config, AppServices& 
         return json_response(200, value);
     }
     if (request.method == "POST" && path == "/api/v1/news/refresh") {
-        return json_response(200, app.collector.refresh_now());
+        return json_response(200, app.collector.refresh_now(true));
     }
     if (request.method == "GET" && path.rfind("/api/v1/companies/", 0) == 0 && path.size() > 5 &&
         path.compare(path.size() - 5, 5, "/feed") == 0) {
@@ -450,7 +451,7 @@ Response route(const Request& request, const ServerConfig& config, AppServices& 
         if (!body.get("useful").is_bool()) return json_response(400, error_json("useful_required", "useful must be true or false"));
         json::Value insight;
         if (!agent.find_insight(id, insight)) return json_response(404, error_json("insight_not_found", "Insight was not found in this process"));
-        const std::string reason = body.get("reason").as_string().substr(0, 500);
+        const std::string reason = textutil::truncate_utf8(body.get("reason").as_string(), 500);
         app.metrics.record_feedback(id, body.get("useful").as_bool(), reason);
         json::Value value = json::Value::object();
         value["status"] = "recorded";

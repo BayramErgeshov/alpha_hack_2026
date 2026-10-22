@@ -55,6 +55,14 @@ inline std::string lower(const std::string& s) {
     return out;
 }
 
+// Truncates to at most max_bytes without splitting a UTF-8 sequence.
+inline std::string truncate_utf8(const std::string& s, size_t max_bytes) {
+    if (s.size() <= max_bytes) return s;
+    size_t end = max_bytes;
+    while (end > 0 && (static_cast<unsigned char>(s[end]) & 0xC0) == 0x80) --end;
+    return s.substr(0, end);
+}
+
 inline bool is_word_cp(uint32_t cp) {
     return (cp >= '0' && cp <= '9') || (cp >= 'a' && cp <= 'z') || (cp >= 0x430 && cp <= 0x44F) || cp == 0x451;
 }

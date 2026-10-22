@@ -296,7 +296,7 @@ std::vector<NewsItem> parse_feed_xml(const std::string& xml, const std::string& 
             if (tag_inner(block, "pubDate", inner) || tag_inner(block, "dc:date", inner)) item.published_epoch = parse_news_date(clean_text(inner));
         }
         if (item.title.empty() || item.url.rfind("http", 0) != 0) continue;
-        if (item.summary.size() > 1200) item.summary = item.summary.substr(0, 1200);
+        item.summary = textutil::truncate_utf8(item.summary, 1200);
         item.id = news_id_for_url(item.url);
         item.published = iso_from_epoch(item.published_epoch);
         items.push_back(std::move(item));
@@ -419,9 +419,22 @@ const std::vector<NewsSource>& default_news_sources() {
     return sources;
 }
 
-json::Value NewsCollector::refresh_now() {
+json::Value NewsCollector::refresh_now(bool manual) {
     std::lock_guard<std::mutex> guard(refresh_mutex_);
     json::Value report = json::Value::object();
+    if (manual) {
+        const long long now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        if (last_manual_ != 0 && now - last_manual_ < 60) {
+            report["throttled"] = true;
+            report["retry_after_seconds"] = 60 - (now - last_manual_);
+            report["sources"] = json::Value::array();
+            report["added"] = 0;
+            report["total"] = static_cast<long long>(store_.size());
+            return report;
+        }
+        last_manual_ = now;
+    }
+    report["throttled"] = false;
     report["sources"] = json::Value::array();
     long long added_total = 0;
     for (const auto& source : default_news_sources()) {

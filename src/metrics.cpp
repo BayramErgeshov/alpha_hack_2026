@@ -1,3 +1,4 @@
+#include "text_util.hpp"
 #include "metrics.hpp"
 
 #include <chrono>
@@ -50,7 +51,7 @@ void Metrics::record_feedback(const std::string& insight_id, bool useful, const 
         json::Value r = json::Value::object();
         r["insight_id"] = insight_id;
         r["useful"] = useful;
-        r["reason"] = reason.substr(0, 500);
+        r["reason"] = textutil::truncate_utf8(reason, 500);
         r["at"] = static_cast<long long>(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count());
         reasons_.push_back(std::move(r));
         while (reasons_.size() > 50) reasons_.pop_front();

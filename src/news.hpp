@@ -56,12 +56,14 @@ public:
     explicit NewsCollector(NewsStore& store, std::string state_path) : store_(store), state_path_(std::move(state_path)) {}
     ~NewsCollector();
     void start(int minutes);
-    json::Value refresh_now();
+    // manual=true is a user-triggered refresh (HTTP); it is throttled to one per 60 seconds.
+    json::Value refresh_now(bool manual = false);
 
 private:
     NewsStore& store_;
     std::string state_path_;
     std::mutex refresh_mutex_;
     std::atomic<bool> stop_{ false };
+    long long last_manual_ = 0;
     std::thread worker_;
 };

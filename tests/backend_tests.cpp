@@ -361,4 +361,34 @@ TEST(feed_scores_do_not_saturate) {
     CHECK(feed.get("items").as_array().front().get("relevance").get("band").as_string() == "high");
 }
 
+static bool valid_utf8(const std::string& s) {
+    for (size_t i = 0; i < s.size();) {
+        const unsigned char c = static_cast<unsigned char>(s[i]);
+        size_t n = c < 0x80 ? 1 : (c >> 5) == 6 ? 2 : (c >> 4) == 14 ? 3 : (c >> 3) == 30 ? 4 : 0;
+        if (!n || i + n > s.size()) return false;
+        for (size_t j = 1; j < n; ++j) if ((static_cast<unsigned char>(s[i + j]) & 0xC0) != 0x80) return false;
+        i += n;
+    }
+    return true;
+}
+
+TEST(long_rss_summary_is_cut_on_character_boundary) {
+    std::string body = "x"; // one ASCII byte shifts the 1200-byte limit into the middle of a Cyrillic letter
+    for (int i = 0; i < 400; ++i) body += "Ставка ";
+    const std::string rss = "<rss><channel><item><title>Длинная новость</title><link>https://example.ru/long</link><description>" + body + "</description></item></channel></rss>";
+    const auto items = parse_feed_xml(rss, "Тест");
+    CHECK(items.size() == 1);
+    CHECK(items[0].summary.size() <= 1203);
+    CHECK(valid_utf8(items[0].summary));
+}
+
+TEST(manual_news_refresh_is_throttled) {
+    NewsStore news;
+    NewsCollector collector(news, "");
+    collector.refresh_now(true);
+    const json::Value second = collector.refresh_now(true);
+    CHECK(second.get("throttled").as_bool());
+    CHECK(second.get("retry_after_seconds").as_number() > 0);
+}
+
 int main(int argc, char** argv) { return run_all_tests(argc > 1 ? argv[1] : ""); }
