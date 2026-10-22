@@ -5,6 +5,8 @@
 #include "news.hpp"
 #include "feed.hpp"
 #include "analytics.hpp"
+#include "budget.hpp"
+#include "verifier.hpp"
 
 #include <cstdlib>
 #include <algorithm>
@@ -234,6 +236,71 @@ TEST(matching_uses_word_starts_not_substrings) {
     const json::Value rel2 = score_relevance(metal, "Экспорт угля встал", "Вывоз через порты встал с августа",
         classify_news("Экспорт угля встал"), {}, role_or_default("ceo"));
     CHECK(rel2.get("direct_industry_topic").is_null());
+}
+
+TEST(budget_blocks_after_limit) {
+    TokenBudget budget(1000, "");
+    CHECK(budget.allow());
+    budget.record(600, 300, "deepseek/deepseek-v4.1-flash");
+    CHECK(budget.allow());
+    budget.record(100, 50, "google/gemma-4-26b-a4b-it");
+    CHECK(!budget.allow());
+    const json::Value stats = budget.stats();
+    CHECK(stats.get("used_tokens").as_number() == 1050);
+    CHECK(stats.get("limit_tokens").as_number() == 1000);
+    CHECK(stats.get("calls").as_number() == 2);
+    CHECK(stats.get("by_model").get("google/gemma-4-26b-a4b-it").as_number() == 150);
+    CHECK(stats.get("exhausted").as_bool());
+}
+
+TEST(verifier_flags_claim_without_source) {
+    const json::Value draft = json::Value::parse(R"({
+      "why_it_matters": {"text": "Ставка влияет на долг компании", "evidence_ids": ["N1","C1"]},
+      "risks": [{"text": "Рост процентных расходов", "evidence_ids": []},
+                {"text": "Сложнее рефинансировать", "evidence_ids": ["X9"]}],
+      "opportunities": [{"text": "Зафиксировать ставку", "evidence_ids": ["A1"]}],
+      "bank_view": {"text": "Банк ждёт паузы", "evidence_ids": ["N1"]}
+    })");
+    const json::Value report = verify_claims(draft, { "N1", "C1", "A1" }, "ключевая ставка 14% годовых");
+    CHECK(!report.get("ok").as_bool());
+    int no_evidence = 0, bank = 0;
+    for (const auto& issue : report.get("issues").as_array()) {
+        if (issue.get("code").as_string() == "no_evidence") ++no_evidence;
+        if (issue.get("code").as_string() == "bank_view_without_bank_source") ++bank;
+    }
+    CHECK(no_evidence == 2);
+    CHECK(bank == 1);
+    CHECK(report.get("claims_total").as_number() == 4);
+    CHECK(report.get("claims_supported").as_number() == 2);
+}
+
+TEST(verifier_flags_number_not_in_sources) {
+    const json::Value draft = json::Value::parse(R"({
+      "why_it_matters": {"text": "Ставка 14% сохраняет нагрузку", "evidence_ids": ["N1"]},
+      "risks": [{"text": "Расходы вырастут на 23,5%", "evidence_ids": ["N1"]}],
+      "opportunities": [{"text": "Размещение под 14,0% годовых", "evidence_ids": ["A1"]}]
+    })");
+    const json::Value report = verify_claims(draft, { "N1", "A1" }, "Банк России сохранил ставку 14% годовых");
+    bool flagged = false, wrongly = false;
+    for (const auto& issue : report.get("issues").as_array()) {
+        if (issue.get("code").as_string() != "number_not_in_sources") continue;
+        if (issue.get("text").as_string().find("23,5") != std::string::npos) flagged = true;
+        if (issue.get("text").as_string().find("14") != std::string::npos) wrongly = true;
+    }
+    CHECK(flagged);
+    CHECK(!wrongly);
+}
+
+TEST(verifier_accepts_clean_draft) {
+    const json::Value draft = json::Value::parse(R"({
+      "why_it_matters": {"text": "Дорогой долг", "evidence_ids": ["N1","C1"]},
+      "risks": [{"text": "Рост расходов", "evidence_ids": ["N1"]}],
+      "opportunities": [],
+      "actions": [{"text": "Проверить график платежей", "evidence_ids": ["C1"]}],
+      "bank_view": {"text": "Банк ждёт сохранения ставки", "evidence_ids": ["A2"]}
+    })");
+    const json::Value report = verify_claims(draft, { "N1", "C1", "A2" }, "");
+    CHECK(report.get("ok").as_bool());
 }
 
 int main(int argc, char** argv) { return run_all_tests(argc > 1 ? argv[1] : ""); }
