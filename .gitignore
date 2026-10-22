@@ -22,5 +22,3 @@ example/work/
 *.suo
 __pycache__/
 test-results/
-data/input/*.csv
-data/analytics/*.md
