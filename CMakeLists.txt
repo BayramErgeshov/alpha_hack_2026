@@ -10,6 +10,7 @@ find_package(Threads REQUIRED)
 
 set(ALFA_CORE_SOURCES
     src/reader.cpp
+    src/news.cpp
     src/data_store.cpp
     src/analytics.cpp
     src/llm_client.cpp
