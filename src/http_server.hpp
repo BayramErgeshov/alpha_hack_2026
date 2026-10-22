@@ -4,6 +4,7 @@
 #include "analytics.hpp"
 #include "data_store.hpp"
 #include "news.hpp"
+#include "metrics.hpp"
 
 #include <string>
 
@@ -11,6 +12,8 @@ struct ServerConfig {
     std::string host = "127.0.0.1";
     unsigned short port = 8080;
     std::string api_token;
+    std::string static_dir;   // optional: built frontend served for non-API paths
+    std::string cors_origin;  // optional: allowed browser origin for local frontend development
 };
 
 // Everything a request handler may use. Owned by main(); lives for the whole process.
@@ -20,6 +23,7 @@ struct AppServices {
     InsightAgent& agent;
     NewsStore& news;
     NewsCollector& collector;
+    Metrics& metrics;
 };
 
 int run_http_server(const ServerConfig& config, AppServices& app);

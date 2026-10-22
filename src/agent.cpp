@@ -2,6 +2,7 @@
 #include "agent.hpp"
 #include "feed.hpp"
 #include "verifier.hpp"
+#include "offers.hpp"
 
 #include <cstdio>
 
@@ -867,6 +868,7 @@ json::Value InsightAgent::analyze(const std::string& company_id, const ArticleIn
     result["generation"]["model"] = model_used ? json::Value(llm_.model) : json::Value(nullptr);
     result["generation"]["self_check"] = !model_used ? "skipped" : report.get("ok").as_bool() ? "passed" : "issues_flagged";
     if (!model_warning.empty()) result["generation"]["warning"] = shorten(model_warning, 500);
+    result["offers"] = bank_offers(*company, article.categories);
     result["budget"] = budget_.stats();
 
     {

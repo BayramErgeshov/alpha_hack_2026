@@ -6,6 +6,7 @@
 #include "llm_client.hpp"
 #include "news.hpp"
 #include "budget.hpp"
+#include "metrics.hpp"
 
 #include <filesystem>
 
@@ -97,9 +98,12 @@ int main() {
     server.host = env("ALFA_HOST", "127.0.0.1");
     server.port = port_from_env();
     server.api_token = env("ALFA_API_TOKEN", "");
+    server.static_dir = env("ALFA_STATIC_DIR", "");
+    server.cors_origin = env("ALFA_CORS_ORIGIN", "");
     std::cout << "Loaded " << data.company_count() << " companies and " << analytics.document_count()
         << " bank analytical documents, " << news.size() << " news items\n";
-    AppServices app{ data, analytics, agent, news, collector };
+    Metrics metrics((std::filesystem::path(work_dir) / "metrics.json").string());
+    AppServices app{ data, analytics, agent, news, collector, metrics };
     const int result = run_http_server(server, app);
     curl_global_cleanup();
 #ifdef _WIN32

@@ -7,6 +7,8 @@
 #include "analytics.hpp"
 #include "budget.hpp"
 #include "verifier.hpp"
+#include "offers.hpp"
+#include "metrics.hpp"
 
 #include <cstdlib>
 #include <algorithm>
@@ -301,6 +303,51 @@ TEST(verifier_accepts_clean_draft) {
     })");
     const json::Value report = verify_claims(draft, { "N1", "C1", "A2" }, "");
     CHECK(report.get("ok").as_bool());
+}
+
+TEST(offers_for_trade_company) {
+    CompanyProfile exporter = profile("T_EXP", "Торговля оптовая металлами", false, true);
+    exporter.payments_in = 1e9;
+    const json::Value offers = bank_offers(exporter, { "currency" });
+    CHECK(!offers.as_array().empty());
+    CHECK(offers.as_array().size() <= 2);
+    bool fx = false;
+    for (const auto& o : offers.as_array()) {
+        CHECK(o.get("label").as_string() == "Предложение Альфа-Банка");
+        CHECK(o.get("is_advertising").as_bool());
+        CHECK(!o.get("reason").as_string().empty());
+        if (o.get("product_id").as_string() == "fx_hedging" || o.get("product_id").as_string() == "ved_support") fx = true;
+    }
+    CHECK(fx);
+    CompanyProfile with_factoring = profile("T_F", "Торговля", false, false);
+    with_factoring.factoring = true; with_factoring.payments_in = 1e9;
+    for (const auto& o : bank_offers(with_factoring, { "logistics" }).as_array())
+        CHECK(o.get("product_id").as_string() != "factoring");
+    CHECK(bank_offers(profile("T_N", "Добыча", false, false), { "other" }).as_array().empty());
+}
+
+TEST(feedback_updates_metrics) {
+    Metrics metrics("");
+    json::Value insight = json::Value::parse(R"({"id":"i1","role":{"id":"cfo"},"cached":false,
+      "generation":{"method":"allowlisted_llm"},
+      "quality_check":{"claims_total":4,"claims_supported":3,"revise_rounds":1,"llm_used":true},
+      "interpretation":{"bank_position":{"text":"x"}},
+      "agent_trace":[{"step":"plan","duration_ms":10},{"step":"draft","duration_ms":30}]})");
+    metrics.record_insight(insight);
+    metrics.record_feedback("i1", true, "");
+    metrics.record_feedback("i1", false, "слишком общо");
+    TokenBudget budget(100, "");
+    const json::Value snap = metrics.snapshot(budget);
+    CHECK(snap.get("insights").get("total").as_number() == 1);
+    CHECK(snap.get("insights").get("llm_share").as_number() == 1.0);
+    CHECK(snap.get("quality").get("supported_claims_share").as_number() == 0.75);
+    CHECK(snap.get("quality").get("revise_share").as_number() == 1.0);
+    CHECK(snap.get("quality").get("bank_position_share").as_number() == 1.0);
+    CHECK(snap.get("feedback").get("total").as_number() == 2);
+    CHECK(snap.get("feedback").get("useful_share").as_number() == 0.5);
+    CHECK(snap.get("feedback").get("recent_reasons").as_array().size() == 1);
+    CHECK(snap.get("latency").get("avg_ms").as_number() == 40);
+    CHECK(snap.get("budget").get("limit_tokens").as_number() == 100);
 }
 
 int main(int argc, char** argv) { return run_all_tests(argc > 1 ? argv[1] : ""); }

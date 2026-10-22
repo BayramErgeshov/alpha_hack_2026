@@ -11,6 +11,8 @@
 #include <chrono>
 #include <cctype>
 #include <climits>
+#include <filesystem>
+#include <fstream>
 #include <cstdlib>
 #include <functional>
 #include <iostream>
@@ -54,6 +56,7 @@ struct Response {
     int status = 200;
     std::string content_type = "application/json; charset=utf-8";
     std::string body;
+    std::string extra_headers;
 };
 
 std::string lower(std::string value) {
@@ -125,7 +128,7 @@ json::Value error_json(const std::string& code, const std::string& message) {
 }
 
 Response json_response(int status, const json::Value& value) {
-    return Response{ status, "application/json; charset=utf-8", value.dump() };
+    return Response{ status, "application/json; charset=utf-8", value.dump(), "" };
 }
 
 bool constant_time_equal(const std::string& a, const std::string& b) {
@@ -210,6 +213,59 @@ json::Value parse_body(const Request& request) {
     return json::Value::parse(request.body);
 }
 
+const char* content_type_for(const std::string& ext) {
+    static const std::pair<const char*, const char*> types[] = {
+        { ".html", "text/html; charset=utf-8" }, { ".js", "text/javascript; charset=utf-8" }, { ".mjs", "text/javascript; charset=utf-8" },
+        { ".css", "text/css; charset=utf-8" }, { ".json", "application/json; charset=utf-8" }, { ".svg", "image/svg+xml" },
+        { ".png", "image/png" }, { ".jpg", "image/jpeg" }, { ".jpeg", "image/jpeg" }, { ".webp", "image/webp" },
+        { ".ico", "image/x-icon" }, { ".woff2", "font/woff2" }, { ".woff", "font/woff" }, { ".txt", "text/plain; charset=utf-8" },
+        { ".map", "application/json; charset=utf-8" },
+    };
+    for (const auto& t : types) if (ext == t.first) return t.second;
+    return "application/octet-stream";
+}
+
+// Serves a file from the frontend build directory. Rejects traversal, backslashes, NUL and drive letters;
+// the resolved canonical path must stay inside the directory. Unknown routes without an extension
+// fall back to index.html (single-page application).
+bool serve_static(const std::string& root, const std::string& raw_path, Response& response) {
+    namespace fs = std::filesystem;
+    const std::string decoded = percent_decode(raw_path, false);
+    if (decoded.empty() || decoded[0] != '/' || decoded.find('\\') != std::string::npos || decoded.find('\0') != std::string::npos ||
+        decoded.find(':') != std::string::npos) {
+        response = json_response(400, error_json("bad_path", "Path is not allowed"));
+        return true;
+    }
+    for (size_t pos = 0; pos < decoded.size();) {
+        const size_t next = decoded.find('/', pos + 1);
+        const std::string segment = decoded.substr(pos + 1, next == std::string::npos ? std::string::npos : next - pos - 1);
+        if (segment == "..") { response = json_response(400, error_json("bad_path", "Path is not allowed")); return true; }
+        if (next == std::string::npos) break;
+        pos = next;
+    }
+    std::error_code ec;
+    const fs::path base = fs::weakly_canonical(fs::path(root), ec);
+    if (ec) return false;
+    fs::path target = fs::weakly_canonical(base / fs::path(decoded.substr(1)), ec);
+    if (ec) return false;
+    const std::string base_str = base.string(), target_str = target.string();
+    if (target_str.compare(0, base_str.size(), base_str) != 0) { response = json_response(400, error_json("bad_path", "Path is not allowed")); return true; }
+    if (decoded == "/" || fs::is_directory(target, ec)) target = target / "index.html";
+    if (!fs::is_regular_file(target, ec)) {
+        if (target.has_extension()) { response = json_response(404, error_json("not_found", "File was not found")); return true; }
+        target = base / "index.html";
+        if (!fs::is_regular_file(target, ec)) return false;
+    }
+    std::ifstream in(target, std::ios::binary);
+    if (!in) return false;
+    std::ostringstream buffer;
+    buffer << in.rdbuf();
+    response.status = 200;
+    response.content_type = content_type_for(target.extension().string());
+    response.body = buffer.str();
+    return true;
+}
+
 Response route(const Request& request, const ServerConfig& config, AppServices& app) {
     const DataStore& data = app.data;
     const AnalyticsIndex& analytics = app.analytics;
@@ -221,6 +277,11 @@ Response route(const Request& request, const ServerConfig& config, AppServices& 
         value["status"] = "ok";
         value["service"] = "alpha-news-backend";
         return json_response(200, value);
+    }
+    if (request.method == "OPTIONS") return Response{ 204, "text/plain; charset=utf-8", "", "" };
+    if (request.method == "GET" && !config.static_dir.empty() && path.rfind("/api/", 0) != 0) {
+        Response file;
+        if (serve_static(config.static_dir, path, file)) return file;
     }
     if (!config.api_token.empty() && !constant_time_equal(bearer(request), config.api_token))
         return json_response(401, error_json("unauthorized", "Provide a valid bearer token or x-api-key"));
@@ -290,6 +351,7 @@ Response route(const Request& request, const ServerConfig& config, AppServices& 
         if (const auto lim = query.find("limit"); lim != query.end()) {
             try { limit = std::clamp<size_t>(std::stoul(lim->second), 1, 100); } catch (...) {}
         }
+        app.metrics.record_feed(role);
         return json_response(200, build_feed(data, analytics, app.news, *company, role, limit));
     }
     if (request.method == "GET" && path.rfind("/api/v1/companies/", 0) == 0) {
@@ -377,7 +439,25 @@ Response route(const Request& request, const ServerConfig& config, AppServices& 
             return json_response(413, error_json("article_too_large", "Article text or metadata exceeds the limit"));
         const auto insight = agent.analyze(company_id, article, role.empty() ? "ceo" : role);
         const auto insight_error = insight.get("error").as_string();
+        if (insight_error.empty()) app.metrics.record_insight(insight);
         return json_response(insight_error.empty() ? 200 : insight_error == "company_not_found" ? 404 : 400, insight);
+    }
+    if (request.method == "POST" && path == "/api/v1/feedback") {
+        json::Value body;
+        try { body = parse_body(request); } catch (const std::exception& e) { return json_response(400, error_json("invalid_json", e.what())); }
+        const std::string id = body.get("insight_id").as_string();
+        if (!safe_id(id)) return json_response(400, error_json("invalid_insight_id", "Provide insight_id"));
+        if (!body.get("useful").is_bool()) return json_response(400, error_json("useful_required", "useful must be true or false"));
+        json::Value insight;
+        if (!agent.find_insight(id, insight)) return json_response(404, error_json("insight_not_found", "Insight was not found in this process"));
+        const std::string reason = body.get("reason").as_string().substr(0, 500);
+        app.metrics.record_feedback(id, body.get("useful").as_bool(), reason);
+        json::Value value = json::Value::object();
+        value["status"] = "recorded";
+        return json_response(200, value);
+    }
+    if (request.method == "GET" && path == "/api/v1/metrics") {
+        return json_response(200, app.metrics.snapshot(agent.budget()));
     }
     const std::string follow_prefix = "/api/v1/insights/";
     constexpr std::string_view questions_suffix = "/questions";
@@ -401,7 +481,7 @@ Response route(const Request& request, const ServerConfig& config, AppServices& 
 
 const char* reason_phrase(int status) {
     switch (status) {
-    case 200: return "OK"; case 400: return "Bad Request"; case 401: return "Unauthorized";
+    case 200: return "OK"; case 204: return "No Content"; case 400: return "Bad Request"; case 401: return "Unauthorized";
     case 404: return "Not Found"; case 413: return "Payload Too Large"; case 422: return "Unprocessable Entity";
     case 431: return "Request Header Fields Too Large"; case 500: return "Internal Server Error";
     case 503: return "Service Unavailable"; default: return "Error";
@@ -429,6 +509,8 @@ void write_response(socket_t client, const Response& response) {
         << "Content-Length: " << response.body.size() << "\r\n"
         << "Cache-Control: no-store\r\n"
         << "X-Content-Type-Options: nosniff\r\n"
+        << "Referrer-Policy: no-referrer\r\n"
+        << response.extra_headers
         << "Connection: close\r\n\r\n";
     send_all(client, head.str() + response.body);
 }
@@ -450,6 +532,11 @@ void serve_one(socket_t client, const ServerConfig& config, AppServices& app) {
         } catch (...) {
             response = json_response(500, error_json("internal_error", "Request could not be processed"));
         }
+    }
+    if (!config.cors_origin.empty()) {
+        response.extra_headers += "Access-Control-Allow-Origin: " + config.cors_origin + "\r\n"
+            "Vary: Origin\r\nAccess-Control-Allow-Headers: Content-Type, Authorization, x-api-key\r\n"
+            "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Max-Age: 600\r\n";
     }
     status = response.status;
     write_response(client, response);

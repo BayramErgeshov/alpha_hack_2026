@@ -14,6 +14,8 @@ set(ALFA_CORE_SOURCES
     src/feed.cpp
     src/budget.cpp
     src/verifier.cpp
+    src/offers.cpp
+    src/metrics.cpp
     src/data_store.cpp
     src/analytics.cpp
     src/llm_client.cpp

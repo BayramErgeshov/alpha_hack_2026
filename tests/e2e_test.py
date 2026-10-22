@@ -262,6 +262,58 @@ def insight_without_model_by_text():
     assert status == 404, bad
 
 
+# ---------------------------------------------------------------- feedback, metrics, offers, static UI
+@test
+def feedback_and_metrics_endpoints():
+    srv = server()
+    _, clients, _ = srv.get("/api/v1/clients?limit=100")
+    exporter = next((c for c in clients["items"] if c["foreign_trade"]), clients["items"][0])
+    status, insight, _ = srv.post("/api/v1/insights", {"company_id": exporter["id"], "title": "Курс рубля",
+                                                     "text": "Курс доллара и юаня вырос, экспортёры и импортёры пересматривают валютные расчёты"})
+    assert status == 200, insight
+    assert "offers" in insight, list(insight)
+    if exporter["foreign_trade"]:
+        assert insight["offers"] and all(o["is_advertising"] for o in insight["offers"]), insight["offers"]
+    status, ok, _ = srv.post("/api/v1/feedback", {"insight_id": insight["id"], "useful": True})
+    assert status == 200, ok
+    status, bad, _ = srv.post("/api/v1/feedback", {"insight_id": "insight-0-0", "useful": True})
+    assert status == 404, bad
+    status, bad, _ = srv.post("/api/v1/feedback", {"insight_id": insight["id"]})
+    assert status == 400, bad
+    status, metrics, _ = srv.get("/api/v1/metrics")
+    assert status == 200, metrics
+    assert metrics["insights"]["total"] >= 1 and metrics["feedback"]["total"] >= 1, metrics
+    assert "budget" in metrics and "definitions" in metrics
+
+
+@test
+def static_ui_and_path_traversal_blocked():
+    ui = os.path.join(ROOT, "build", "e2e-ui")
+    os.makedirs(os.path.join(ui, "assets"), exist_ok=True)
+    with open(os.path.join(ui, "index.html"), "w", encoding="utf-8") as f:
+        f.write("<!doctype html><title>UI</title>")
+    with open(os.path.join(ui, "assets", "app.js"), "w", encoding="utf-8") as f:
+        f.write("console.log(1)")
+    srv = Server({"ALFA_STATIC_DIR": ui, "ALFA_CORS_ORIGIN": "http://localhost:5173"})
+    try:
+        status, body, headers = srv.get("/")
+        assert status == 200 and "<title>UI</title>" in body, (status, body)
+        status, body, headers = srv.get("/assets/app.js")
+        assert status == 200 and "javascript" in headers.get("Content-Type", ""), headers
+        status, body, _ = srv.get("/clients/U_1")
+        assert status == 200 and "<title>UI</title>" in body, "SPA routes fall back to index.html"
+        for evil in ("/../README.md", "/%2e%2e/README.md", "/assets/..%2f..%2fREADME.md", "/..%5cREADME.md"):
+            status, body, _ = srv.get(evil)
+            assert status in (400, 404), (evil, status)
+            assert "Alpha News Backend" not in str(body), evil
+        status, _, headers = srv.get("/api/v1/roles")
+        assert headers.get("Access-Control-Allow-Origin") == "http://localhost:5173", headers
+        status, _, headers = srv.request("OPTIONS", "/api/v1/insights")
+        assert status == 204, status
+    finally:
+        srv.stop()
+
+
 def main():
     failed = 0
     ran = 0
