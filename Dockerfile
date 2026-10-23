@@ -2,13 +2,15 @@
 FROM debian:bookworm-slim AS build
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates cmake g++ make libcurl4-openssl-dev python3 && rm -rf /var/lib/apt/lists/*
+# Bounded parallelism: an unbounded `make -j` exhausts Docker Desktop's VM memory.
+ARG BUILD_JOBS=2
 WORKDIR /src
 COPY CMakeLists.txt ./
 COPY src ./src
 COPY tests ./tests
 COPY data ./data
 RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DALFA_BUILD_EXAMPLES=OFF \
-    && cmake --build build --parallel \
+    && cmake --build build --parallel ${BUILD_JOBS} \
     && ./build/backend_tests
 
 FROM debian:bookworm-slim
