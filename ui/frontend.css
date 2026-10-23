@@ -36,3 +36,9 @@ main{min-height:calc(100vh - 190px)}.map-layout{padding-top:24px}.map-heading p{
 @media (prefers-reduced-motion: reduce) {
   .connections .flow { animation: none; opacity: 0; }
 }
+/* Home screen of the internet bank: entry point to "Новости для бизнеса" (case criterion 09). */
+#home-entry{display:block;color:#fff;text-decoration:none}#home-entry:focus-visible{outline:3px solid #202127;outline-offset:4px}
+#home-entry .hero-button{width:fit-content;display:inline-flex}#home-entry h2{width:55%}
+.brief-aside .text-link{font-size:11px}.bank-strip p{line-height:1.5}
+.deck-item[aria-disabled=true]{opacity:.8;cursor:default}
+@media(max-width:760px){#home-entry h2{width:auto}.fan{display:none}#home-entry>p{max-width:none}}

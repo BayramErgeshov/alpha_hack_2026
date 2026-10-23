@@ -36,12 +36,25 @@ function currentNews() {return state.items.find(n => n.news_id === state.newsId)
 function replaceContent(box,...children) {box.replaceChildren(...children.filter(child => child !== null && child !== undefined));}
 function status(box,text,retry) {replaceContent(box,el('p',{},text), retry ? el('button',{class:'subtle',onclick:retry},'Повторить') : null); box.hidden = false;}
 function route() {
-  const scenarios = location.hash === '#scenarios';
-  $('map-panel').hidden = scenarios; $('scenario-panel').hidden = !scenarios;
-  for (const [id,active] of [['tab-map',!scenarios],['tab-scenarios',scenarios]]) {
+  const view = location.hash === '#scenarios' ? 'scenarios' : location.hash === '#map' ? 'map' : 'home';
+  $('home-panel').hidden = view !== 'home'; $('map-panel').hidden = view !== 'map'; $('scenario-panel').hidden = view !== 'scenarios';
+  if (view === 'home') $('insight-section').hidden = true;
+  else if (state.insight) $('insight-section').hidden = false;
+  for (const [id,active] of [['tab-home',view === 'home'],['tab-map',view === 'map'],['tab-scenarios',view === 'scenarios']]) {
     if (active) $(id).setAttribute('aria-current','page'); else $(id).removeAttribute('aria-current');
   }
-  document.title = (scenarios ? 'Сценарии' : 'Карта влияния') + ' · Альфа-Бизнес';
+  document.title = ({home:'Главная',map:'Новости для бизнеса',scenarios:'Сценарии'})[view] + ' · Альфа-Бизнес';
+}
+function updateHome() {
+  const top = state.items[0];
+  const role = $('role').selectedOptions[0]?.textContent || '';
+  $('home-role').textContent = role ? 'Персонально для роли: ' + role : 'Персонально для вашей роли';
+  $('fan-role').textContent = ({owner:'Owner',ceo:'CEO',cfo:'CFO',treasurer:'Treasury',accountant:'Accounting'})[state.role] || state.role.toUpperCase();
+  $('fan-count').textContent = state.items.length ? String(state.items.length) : '—';
+  $('fan-score').textContent = top ? Math.round((top.relevance?.score || 0) * 100) + '%' : '—';
+  $('fan-top').textContent = top ? top.title : 'Выберите компанию, чтобы получить ленту';
+  $('home-top-title').textContent = top ? top.title : 'Выберите компанию, чтобы получить персональную ленту.';
+  $('home-top-label').textContent = top ? 'Главное событие · ' + (top.relevance?.primary_category_label || '') : 'Главное событие для вас';
 }
 function clearInsight() {
   insightVersion++; requests.get('insight')?.abort();
@@ -101,7 +114,7 @@ function chooseCompany(company) {
 async function loadFeed() {
   if (!state.client) { $('company-dialog').showModal(); return; }
   const version = ++feedVersion;
-  clearInsight(); state.items = []; state.newsId = null; state.page = 0; updateScenarioContext();
+  clearInsight(); state.items = []; state.newsId = null; state.page = 0; updateScenarioContext(); updateHome();
   $('map-workspace').hidden = true; $('feed-pager').hidden = true; $('feed-gaps').replaceChildren();
   status($('map-status'),'Подбираем события для компании и вашей роли…');
   $('refresh').disabled = true;
@@ -112,7 +125,7 @@ async function loadFeed() {
     $('feed-meta').textContent = `Событий: ${state.items.length} · ${data.role?.title || $('role').selectedOptions[0]?.textContent || ''}`;
     $('feed-gaps').replaceChildren(...(data.data_gaps || []).map(g => el('p',{},g)));
     if (!state.items.length) {status($('map-status'),'По этому профилю пока нет событий. Можно сменить компанию или обновить ленту.',loadFeed);return;}
-    state.newsId = state.items[0].news_id;
+    state.newsId = state.items[0].news_id; updateHome();
     $('map-status').hidden = true; $('map-workspace').hidden = false; $('feed-pager').hidden = false;
     renderMap();
   } catch(error) {
@@ -130,7 +143,7 @@ function renderMap() {
     const active = index === selected;
     const node = el('button',{class:`graph-node event-node event-${positions[index]}` + (active ? ' selected' : ''),'aria-pressed':String(active),title:n.title,onclick:() => selectNews(n)},el('span',{class:'node-tag'},n.source || 'Источник'),el('strong',{},n.title),el('small',{},date(n.published)));
     node.style.opacity = state.focused && !active ? '.25' : '1'; $('event-nodes').append(node);
-    const effect = el('div',{class:`effect effect-${positions[index]}`},el('span',{class:'effect-dot'}),el('b',{},n.category_labels?.[0] || 'Бизнес-контекст'),el('small',{},'Релевантность ' + Math.round((n.relevance?.score || 0)*100) + '%'));
+    const effect = el('div',{class:`effect effect-${positions[index]}`},el('span',{class:'effect-dot'}),el('b',{},n.relevance?.primary_category_label || n.category_labels?.[0] || 'Бизнес-контекст'),el('small',{},'Релевантность ' + Math.round((n.relevance?.score || 0)*100) + '%'));
     effect.style.opacity = state.focused && !active ? '.25' : '1'; $('effects').append(effect);
   });
   document.querySelectorAll('.path-group').forEach((path,index) => {path.style.display = index < page.length ? '' : 'none'; path.style.opacity = state.focused && index !== selected ? '.15' : '1'; path.style.stroke = index === selected ? '#ed867e' : '#b3bfce';});
@@ -204,6 +217,7 @@ function updateCalculation() {
 }
 function init() {
   window.addEventListener('hashchange',route); route();
+  $('home-date').textContent = new Date().toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
   $('choose-company').onclick = () => {$('company-dialog').showModal(); loadClients();};
   $('close-company').onclick = () => $('company-dialog').close();
   $('company-search-form').onsubmit = e => {e.preventDefault();state.clientOffset=0;loadClients();};
