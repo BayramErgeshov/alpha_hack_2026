@@ -19,5 +19,16 @@ services:
     volumes:
       - alpha-work:/app/work
     restart: unless-stopped
+  # Optional public link for a live demo from this computer (no account needed):
+  #   docker compose --profile public up -d   ->  https://<random>.trycloudflare.com (see start-public.cmd)
+  # The link works while this computer and Docker are running; the model budget is capped by
+  # ALFA_LLM_DAILY_TOKEN_LIMIT, and the key never leaves the backend container.
+  public-link:
+    image: cloudflare/cloudflared:2024.12.2
+    profiles: ["public"]
+    command: ["tunnel", "--no-autoupdate", "--url", "http://alpha-backend:8080"]
+    depends_on:
+      - alpha-backend
+    restart: unless-stopped
 volumes:
   alpha-work:

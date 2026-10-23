@@ -2,7 +2,13 @@
 
 Сервису нужно ~130 МБ памяти, поэтому подходит бесплатный тариф с 512 МБ.
 
-## Hugging Face Spaces (бесплатно, без банковской карты)
+## Публичная ссылка с компьютера (без аккаунтов, 5 минут)
+Дважды щёлкните `start-public.cmd` (или `docker compose --profile public up --build -d`). Рядом с сервисом поднимается туннель Cloudflare, и скрипт печатает и открывает ссылку вида `https://<слова>.trycloudflare.com`. Ссылка работает с любого устройства, пока компьютер и Docker включены, и меняется после перезапуска. Ключ остаётся в контейнере сервиса, расход модели ограничен `ALFA_LLM_DAILY_TOKEN_LIMIT`. Остановить: `stop-demo.cmd`.
+
+## Railway (без карты, пробный кредит на 30 дней)
+New Project → Deploy from GitHub repo → этот репозиторий. Railway соберёт `Dockerfile`; в Variables задайте `ALFA_LLM_API_KEY` и `PORT=8080`, в Settings → Networking → Generate Domain с портом 8080.
+
+## Hugging Face Spaces (Docker-спейсы требуют платный тариф PRO) (бесплатно, без банковской карты)
 1. Зарегистрируйтесь на huggingface.co и создайте Space: SDK **Docker**, шаблон Blank, видимость Public.
 2. Загрузите в Space два файла из `deploy/huggingface/`: `Dockerfile` и `README.md` (в заголовке README указан `app_port: 7860`). Dockerfile сам клонирует этот репозиторий, собирает сервис и прогоняет юнит-тесты.
 3. Settings → Variables and secrets → **New secret** `ALFA_LLM_API_KEY` = ключ организаторов. В репозиторий ключ не попадает.
