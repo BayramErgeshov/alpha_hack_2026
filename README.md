@@ -22,6 +22,8 @@ docker compose up --build     # сборка, прогон юнит-тестов
 
 Откройте http://127.0.0.1:8080 — главный экран интернет-банка с точкой входа в сервис.
 
+На Windows с Docker Desktop достаточно дважды щёлкнуть `start-demo.cmd`: он соберёт и запустит сервис и откроет браузер. Остановить — `stop-demo.cmd`.
+
 Без ключа сервис тоже работает: лента, профиль, поиск по аналитике и разбор по правилам. В каждом ответе видно, каким методом он получен (`generation.method`).
 
 Публикация на бесплатном сервере — [docs/DEPLOY.md](docs/DEPLOY.md). Другие способы запуска: Linux без Docker — `./build.sh && ./build/alpha_backend`; Windows и Visual Studio — [docs/WINDOWS_BUILD.md](docs/WINDOWS_BUILD.md).
