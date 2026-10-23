@@ -175,6 +175,27 @@ json::Value score_relevance(const CompanyProfile& company, const std::string& ti
     }
     if (rate || has(categories, "macro")) { score += 0.05; reasons.push_back("Влияет на общий макроэкономический фон для крупного бизнеса"); }
 
+    // Primary category: the topic that best explains why this event matters to this company.
+    // Signals: category named in the title, a company feature it hits, the user's role priority.
+    std::string primary = categories.empty() ? std::string("other") : categories.front();
+    {
+        const auto title_categories = classify_news(title);
+        const bool fts = company.fts;
+        const bool credit = company.loans || company.leasing || company.guarantees || company.deposits;
+        double best = -1;
+        for (const auto& c : categories) {
+            double w = 0;
+            if (std::find(title_categories.begin(), title_categories.end(), c) != title_categories.end()) w += 1.5;
+            if (c == "rate" && credit) w += 1.0;
+            if ((c == "currency" || c == "sanctions") && fts) w += 1.0;
+            if ((c == "commodity" || c == "logistics" || c == "demand") && direct) w += 1.2;
+            if (c == "macro" || c == "other") w -= 0.5;
+            const auto rw = role.weights.find(c);
+            if (rw != role.weights.end()) w += (rw->second - 1.0);
+            if (w > best) { best = w; primary = c; }
+        }
+    }
+
     double role_factor = 1.0;
     std::string role_topic;
     for (const auto& c : categories) {
@@ -198,6 +219,8 @@ json::Value score_relevance(const CompanyProfile& company, const std::string& ti
     result["direct_industry_topic"] = direct ? json::Value(direct->name) : json::Value(nullptr);
     result["counterparty_match"] = counterparty_match.empty() ? json::Value(nullptr) : json::Value(counterparty_match);
     result["role_boost"] = role_factor;
+    result["primary_category"] = primary;
+    result["primary_category_label"] = news_category_label(primary);
     result["interpretation"] = "Оценка по правилам для приоритизации ленты; не является вероятностью финансового эффекта";
     return result;
 }

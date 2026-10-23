@@ -391,4 +391,25 @@ TEST(manual_news_refresh_is_throttled) {
     CHECK(second.get("retry_after_seconds").as_number() > 0);
 }
 
+TEST(primary_category_reflects_why_news_matters) {
+    CompanyProfile trader = profile("T_FX", "Торговля оптовая топливом", false, true);
+    trader.leasing = true;
+    const std::string title = "Прогноз по рублю до конца октября: от 80 до 88 рублей за доллар";
+    const std::string text = "Рубль поддерживают ставка 14% и цены на нефть, давят покупки валюты Минфином";
+    const auto cats = classify_news(title + " " + text);
+    const json::Value fx = score_relevance(trader, title, text, cats, {}, role_or_default("cfo"));
+    CHECK(fx.get("primary_category").as_string() == "currency");
+    CHECK(fx.get("primary_category_label").as_string() == "Валюта и внешняя торговля");
+
+    const CompanyProfile builder = profile("T_B", "Строительство жилых и нежилых зданий", true, false);
+    const std::string t2 = "Банк России сохранил ключевую ставку на уровне 14% годовых";
+    const json::Value rate = score_relevance(builder, t2, "", classify_news(t2), {}, role_or_default("ceo"));
+    CHECK(rate.get("primary_category").as_string() == "rate");
+
+    const CompanyProfile coal = profile("T_C", "Добыча угля", false, false);
+    const std::string t3 = "Экспорт угля через южные порты остановился";
+    const json::Value c = score_relevance(coal, t3, "Европа платит трёхлетний максимум за уголь", classify_news(t3 + " уголь"), {}, role_or_default("ceo"));
+    CHECK(c.get("primary_category").as_string() == "commodity");
+}
+
 int main(int argc, char** argv) { return run_all_tests(argc > 1 ? argv[1] : ""); }

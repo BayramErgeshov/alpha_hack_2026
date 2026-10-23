@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const {calculate,safeUrl,pageItems,isCurrency} = require('../core.js');
+const {calculate,safeUrl,pageItems,isCurrency} = require('../../ui/core.js');
 test('currency scenario returns correct increase and proportional bars',()=>{
   const result=calculate(1000000,80,88);
   assert.equal(result.before,80000000);assert.equal(result.after,88000000);assert.equal(result.delta,8000000);
