@@ -114,6 +114,18 @@ const RoleInfo& role_or_default(const std::string& id) {
     return r ? *r : *find_role("ceo");
 }
 
+namespace {
+// Another bank's own results (profit, loan book, reporting) are background for a corporate client,
+// not an event that changes the client's business, and a bank's product should not headline them.
+bool competitor_bank_results(const textutil::WordIndex& news) {
+    static const std::vector<const char*> banks = { "сбер", "втб", "т-банк", "тинькофф", "газпромбанк", "совкомбанк",
+        "райффайзен", "россельхозбанк", "промсвязьбанк", "псб", "росбанк", "уралсиб", "почта банк", "мкб", "дом.рф" };
+    static const std::vector<const char*> results = { "прибыл", "кредитный портфель", "рсбу", "мсфо", "дивиденд",
+        "отчетност", "отчётност", "рентабельност", "убыт" };
+    return news.any(banks) && news.any(results);
+}
+} // namespace
+
 json::Value roles_json() {
     json::Value list = json::Value::array();
     for (const auto& r : roles()) {
@@ -208,6 +220,11 @@ json::Value score_relevance(const CompanyProfile& company, const std::string& ti
     // so the feed still distinguishes strong from very strong matches.
     const double raw = score * role_factor;
     score = std::min(0.99, raw / (1.0 + 0.45 * raw));
+    const bool competitor = competitor_bank_results(news);
+    if (competitor) {
+        score = std::min(score, 0.25);
+        reasons.push_back("Новость о финансовых результатах другого банка: для бизнеса компании это фон, а не событие");
+    }
 
     json::Value result = json::Value::object();
     result["score"] = std::round(score * 1000.0) / 1000.0;
@@ -219,6 +236,7 @@ json::Value score_relevance(const CompanyProfile& company, const std::string& ti
     result["direct_industry_topic"] = direct ? json::Value(direct->name) : json::Value(nullptr);
     result["counterparty_match"] = counterparty_match.empty() ? json::Value(nullptr) : json::Value(counterparty_match);
     result["role_boost"] = role_factor;
+    result["competitor_bank_news"] = competitor;
     result["primary_category"] = primary;
     result["primary_category_label"] = news_category_label(primary);
     result["interpretation"] = "Оценка по правилам для приоритизации ленты; не является вероятностью финансового эффекта";

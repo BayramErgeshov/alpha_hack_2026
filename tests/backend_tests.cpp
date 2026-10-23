@@ -412,4 +412,21 @@ TEST(primary_category_reflects_why_news_matters) {
     CHECK(c.get("primary_category").as_string() == "commodity");
 }
 
+TEST(competitor_bank_results_are_background_not_top) {
+    CompanyProfile borrower = profile("T_BANKNEWS", "Строительство жилых и нежилых зданий", true, false);
+    const std::string t1 = "Кредитный портфель Т-Банка вырос за счет корпоративных кредитов";
+    const std::string x1 = "Чистая прибыль Т-Банка по РСБУ достигла 156,6 млрд рублей за девять месяцев";
+    const json::Value bank = score_relevance(borrower, t1, x1, classify_news(t1 + " " + x1), {}, role_or_default("cfo"));
+    CHECK(bank.get("competitor_bank_news").as_bool());
+    CHECK(bank.get("band").as_string() == "low");
+    const std::string t2 = "Банк России сохранил ключевую ставку на уровне 14% годовых";
+    const json::Value rate = score_relevance(borrower, t2, "", classify_news(t2), {}, role_or_default("cfo"));
+    CHECK(!rate.get("competitor_bank_news").as_bool());
+    CHECK(rate.get("score").as_number() > bank.get("score").as_number());
+    // A bank merely mentioned as a market participant is not a results story.
+    const std::string t3 = "Сбербанк и ВТБ повысили ставки по корпоративным кредитам вслед за ЦБ";
+    const json::Value loans = score_relevance(borrower, t3, "", classify_news(t3), {}, role_or_default("cfo"));
+    CHECK(!loans.get("competitor_bank_news").as_bool());
+}
+
 int main(int argc, char** argv) { return run_all_tests(argc > 1 ? argv[1] : ""); }
