@@ -249,6 +249,22 @@ def agent_reply_cut_by_token_limit_is_reported():
 
 
 @test
+def reviewer_failure_is_visible_in_trace():
+    srv, proc, log = mock_server("review_cut")
+    try:
+        company, news_id, _ = borrower_and_rate_news(srv)
+        status, insight, _ = srv.post("/api/v1/insights", {"company_id": company, "news_id": news_id})
+        assert status == 200, insight
+        verify = steps(insight)["verify"]
+        assert verify["detail"]["reviewer_status"] == "fallback", verify
+        assert "token limit" in verify["detail"]["reviewer_error"], verify
+        assert "рецензент" in verify["decision"], verify["decision"]
+    finally:
+        srv.stop()
+        proc.terminate()
+
+
+@test
 def agent_budget_exhausted_skips_model():
     srv, proc, log = mock_server("happy", {"ALFA_LLM_DAILY_TOKEN_LIMIT": "1"})
     try:

@@ -231,6 +231,8 @@ std::string planner_prompt() {
 
 // A full analysis in Russian is ~1500-2500 tokens of JSON; 1800 cut real DeepSeek replies mid-document.
 constexpr int kAnalysisMaxTokens = 3000;
+// The reviewer lists issues in Russian; 500 tokens cut real GLM reviews mid-list.
+constexpr int kReviewMaxTokens = 1500;
 
 std::string analyst_prompt() {
     return std::string("Роль агента: аналитик. Ты аналитический помощник Альфа-Банка для руководителей крупного бизнеса. ") + kUntrusted +
@@ -256,13 +258,14 @@ std::string reviewer_prompt() {
     return std::string("Роль агента: рецензент. Ты проверяешь черновик аналитического разбора перед показом руководителю. ") + kUntrusted +
         " Проверь полноту (риски, возможности, действия), непротиворечивость, обоснованность ссылками на источники, "
         "отделение позиции Альфа-Банка от выводов модели, отсутствие выдуманных цифр. Если для обоснования не хватает "
-        "материалов банка, предложи до 3 дополнительных поисковых запросов. Структура: "
+        "материалов банка, предложи до 3 дополнительных поисковых запросов. Не больше 4 замечаний, каждое до 30 слов; "
+        "верни только JSON без пояснений. Структура: "
         "{\"verdict\":\"ok\"|\"revise\",\"issues\":[\"...\"],\"additional_queries\":[\"...\"]}.";
 }
 
 std::string followup_prompt() {
     return std::string("Роль агента: уточнение. Ответь на вопрос руководителя только по сохранённому разбору и его источникам. ") + kUntrusted +
-        " Если источников недостаточно, прямо скажи об этом. Учитывай роль пользователя. "
+        " Если источников недостаточно, прямо скажи об этом. Учитывай роль пользователя. Ответ — до 120 слов, только JSON. "
         "Структура: {\"answer\":\"...\",\"evidence_ids\":[\"N1\"]}.";
 }
 
@@ -640,6 +643,7 @@ json::Value InsightAgent::analyze(const std::string& company_id, const ArticleIn
     std::vector<std::string> extra_queries;
     std::vector<std::string> reviewer_issues;
     std::string review_status = "skipped";
+    std::string reviewer_error;
     if (model_used) {
         report = verify_claims(model_json, evidence_ids, sources_text);
         if (json_truthy_env("ALFA_AGENT_SELF_CHECK", true)) {
@@ -656,14 +660,16 @@ json::Value InsightAgent::analyze(const std::string& company_id, const ArticleIn
                 review_input["available_sources"].push_back(std::move(brief));
             }
             review_input["user_role"] = role_json;
-            const LlmReply review = call_model(llm_.review_model, reviewer_prompt(), review_input.dump(), 500, review_status);
+            const LlmReply review = call_model(llm_.review_model, reviewer_prompt(), review_input.dump(), kReviewMaxTokens, review_status);
             if (review_status == "complete") {
                 try {
                     const json::Value verdict = parse_model_json(review.content);
                     reviewer_wants_revision = verdict.get("verdict").as_string() == "revise";
                     extra_queries = string_list(verdict.get("additional_queries"), 3, 200);
                     reviewer_issues = string_list(verdict.get("issues"), 6, 400);
-                } catch (...) { review_status = "fallback"; }
+                } catch (const std::exception& e) { review_status = "fallback"; reviewer_error = e.what(); }
+            } else {
+                reviewer_error = review.error;
             }
         }
     }
@@ -671,6 +677,7 @@ json::Value InsightAgent::analyze(const std::string& company_id, const ArticleIn
         json::Value detail = json::Value::object();
         detail["programmatic"] = report;
         detail["reviewer_status"] = review_status;
+        if (!reviewer_error.empty()) detail["reviewer_error"] = shorten(reviewer_error, 200);
         detail["reviewer_issues"] = json::Value::array();
         for (const auto& i : reviewer_issues) detail["reviewer_issues"].push_back(i);
         detail["additional_queries"] = json::Value::array();
@@ -678,6 +685,7 @@ json::Value InsightAgent::analyze(const std::string& company_id, const ArticleIn
         const bool ok = model_used && report.get("ok").as_bool() && !reviewer_wants_revision;
         trace.push_back(trace_step("verify", model_used ? "complete" : "skipped",
             !model_used ? "Проверка черновика модели не нужна: разбор по правилам ссылается только на N1 и C1" :
+            ok && review_status == "fallback" ? "Программная проверка пройдена; рецензент недоступен: " + shorten(reviewer_error, 120) :
             ok ? "Проверка пройдена: утверждения подкреплены источниками" :
             "Найдены проблемы: " + std::to_string(report.get("issues").as_array().size()) + " программных, " +
             std::to_string(reviewer_issues.size()) + " от рецензента", std::move(detail), started));
@@ -950,7 +958,7 @@ json::Value InsightAgent::follow_up(const std::string& insight_id, const std::st
     user["user_role"] = stored.result.get("role");
     user["question"] = clean_question;
     user["valid_evidence_ids"] = valid_ids;
-    const LlmReply reply = call_model(llm_.fast_model, followup_prompt(), user.dump(), 700, status);
+    const LlmReply reply = call_model(llm_.fast_model, followup_prompt(), user.dump(), 1200, status);
     if (status == "complete") {
         try {
             const auto parsed = parse_model_json(reply.content);

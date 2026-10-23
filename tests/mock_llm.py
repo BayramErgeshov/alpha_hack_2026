@@ -9,7 +9,7 @@ Like the real gateway's reasoning models (DeepSeek V4.1 Flash, GLM-5.3-Flash), t
 whole max_tokens budget on hidden reasoning and returns empty content with finish_reason "length"
 unless the request disables reasoning with {"reasoning": {"enabled": false}}.
 
-Scenarios (MOCK_SCENARIO): happy | revise | broken | truncated (analyst reply cut at max_tokens). Every call is appended to
+Scenarios (MOCK_SCENARIO): happy | revise | broken | truncated (analyst reply cut at max_tokens) | review_cut (reviewer reply cut). Every call is appended to
 MOCK_LOG as one JSON line {role, model} so tests can assert which models were used.
 """
 import json
@@ -92,7 +92,7 @@ class Handler(BaseHTTPRequestHandler):
         else:
             content = answer(role, user)
             finish = "stop"
-            if SCENARIO == "truncated" and role == "analyst":
+            if (SCENARIO == "truncated" and role == "analyst") or (SCENARIO == "review_cut" and role == "reviewer"):
                 content, finish = content[: len(content) // 2], "length"
             reply = {"id": "mock", "object": "chat.completion", "model": body.get("model"),
                      "choices": [{"index": 0, "message": {"role": "assistant", "content": content}, "finish_reason": finish}],
