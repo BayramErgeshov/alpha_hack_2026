@@ -142,6 +142,13 @@ LlmReply llm_chat_model(const LlmConfig& base_config, const std::string& model, 
     payload["model"] = config.model;
     payload["temperature"] = 0.15;
     payload["max_tokens"] = std::clamp(max_tokens, 256, 3000);
+    // DeepSeek V4.1 Flash and GLM-5.3-Flash on the case gateway are reasoning models: by default they
+    // spend the whole max_tokens budget on hidden reasoning and return empty content (finish_reason
+    // "length"). The agent already plans, verifies and revises explicitly, so hidden reasoning is
+    // switched off; this also halves latency and token spend. Models without reasoning ignore it.
+    json::Value reasoning = json::Value::object();
+    reasoning["enabled"] = false;
+    payload["reasoning"] = std::move(reasoning);
     json::Value messages = json::Value::array();
     json::Value system = json::Value::object();
     system["role"] = "system";
@@ -206,7 +213,13 @@ LlmReply llm_chat_model(const LlmConfig& base_config, const std::string& model, 
                 if (text.is_string()) reply.content += text.as_string();
             }
         }
-        if (reply.content.empty()) { reply.error = "LLM gateway returned an empty message"; return reply; }
+        if (reply.content.empty()) {
+            const json::Value& finish = choices.front().get("finish_reason");
+            reply.error = finish.is_string() && finish.as_string() == "length"
+                ? "Model spent the whole token limit without an answer (finish_reason=length)"
+                : "LLM gateway returned an empty message";
+            return reply;
+        }
         const json::Value& usage = root.get("usage");
         reply.prompt_tokens = static_cast<long long>(usage.get("prompt_tokens").as_number());
         reply.completion_tokens = static_cast<long long>(usage.get("completion_tokens").as_number());

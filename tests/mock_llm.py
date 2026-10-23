@@ -5,6 +5,10 @@ The backend sends a role marker in the system prompt ("Роль агента: п
 "аналитик", "рецензент", "уточнение"); the mock answers each role with valid JSON
 built from the evidence ids present in the request, so the real agent loop runs.
 
+Like the real gateway's reasoning models (DeepSeek V4.1 Flash, GLM-5.3-Flash), the mock spends the
+whole max_tokens budget on hidden reasoning and returns empty content with finish_reason "length"
+unless the request disables reasoning with {"reasoning": {"enabled": false}}.
+
 Scenarios (MOCK_SCENARIO): happy | revise | broken. Every call is appended to
 MOCK_LOG as one JSON line {role, model} so tests can assert which models were used.
 """
@@ -77,10 +81,19 @@ class Handler(BaseHTTPRequestHandler):
         if LOG:
             with open(LOG, "a", encoding="utf-8") as f:
                 f.write(json.dumps({"role": role, "model": body.get("model")}) + "\n")
-        content = answer(role, user)
-        reply = {"id": "mock", "object": "chat.completion", "model": body.get("model"),
-                 "choices": [{"index": 0, "message": {"role": "assistant", "content": content}, "finish_reason": "stop"}],
-                 "usage": {"prompt_tokens": len(user) // 4, "completion_tokens": len(content) // 4}}
+        reasoning_off = (body.get("reasoning") or {}).get("enabled") is False
+        if not reasoning_off:
+            budget = int(body.get("max_tokens") or 1000)
+            reply = {"id": "mock", "object": "chat.completion", "model": body.get("model"),
+                     "choices": [{"index": 0, "message": {"role": "assistant", "content": "",
+                                                          "reasoning_content": "..."}, "finish_reason": "length"}],
+                     "usage": {"prompt_tokens": len(user) // 4, "completion_tokens": budget,
+                               "completion_tokens_details": {"reasoning_tokens": budget}}}
+        else:
+            content = answer(role, user)
+            reply = {"id": "mock", "object": "chat.completion", "model": body.get("model"),
+                     "choices": [{"index": 0, "message": {"role": "assistant", "content": content}, "finish_reason": "stop"}],
+                     "usage": {"prompt_tokens": len(user) // 4, "completion_tokens": len(content) // 4}}
         data = json.dumps(reply, ensure_ascii=False).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
