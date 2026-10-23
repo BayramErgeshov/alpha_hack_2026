@@ -229,6 +229,9 @@ std::string planner_prompt() {
         "\"need_counterparties\":true,\"need_related_news\":true}.";
 }
 
+// A full analysis in Russian is ~1500-2500 tokens of JSON; 1800 cut real DeepSeek replies mid-document.
+constexpr int kAnalysisMaxTokens = 3000;
+
 std::string analyst_prompt() {
     return std::string("Роль агента: аналитик. Ты аналитический помощник Альфа-Банка для руководителей крупного бизнеса. ") + kUntrusted +
         " Объясни, как событие влияет именно на эту компанию с учётом её отрасли, банковских продуктов, контрагентов, "
@@ -236,7 +239,8 @@ std::string analyst_prompt() {
         "Разделяй подтверждённые факты новости, экспертную позицию Альфа-Банка (только если её явно подтверждает материал A1..An) "
         "и собственные выводы модели. Каждое утверждение связывай с evidence_ids из списка allowed_evidence_ids. "
         "Не выдумывай рыночную долю и цифры, которых нет в источниках. Если материал банка не выражает позицию по событию, верни bank_view=null. "
-        "Действия делай конкретными для роли пользователя. Структура JSON: "
+        "Действия делай конкретными для роли пользователя. Пиши сжато: каждое поле text — 1–2 предложения (до 35 слов), "
+        "в каждом списке 2–3 пункта, uncertainties — не больше 2. Верни только JSON без пояснений. Структура JSON: "
         "{\"what_happened\":{\"text\":\"...\",\"evidence_ids\":[\"N1\"]},"
         "\"why_it_matters\":{\"text\":\"...\",\"evidence_ids\":[\"N1\",\"C1\"]},"
         "\"potential_effects\":[{\"text\":\"...\",\"evidence_ids\":[\"N1\",\"A1\"],\"horizon\":\"...\"}],"
@@ -612,7 +616,7 @@ json::Value InsightAgent::analyze(const std::string& company_id, const ArticleIn
     std::string model_warning;
     std::string draft_status = plan_status == "budget_exhausted" ? "budget_exhausted" : "fallback";
     if (draft_status != "budget_exhausted") {
-        const LlmReply reply = call_model(llm_.model, analyst_prompt(), model_input().dump(), 1800, draft_status);
+        const LlmReply reply = call_model(llm_.model, analyst_prompt(), model_input().dump(), kAnalysisMaxTokens, draft_status);
         if (draft_status == "complete") {
             try {
                 model_json = parse_model_json(reply.content);
@@ -694,7 +698,7 @@ json::Value InsightAgent::analyze(const std::string& company_id, const ArticleIn
         std::string status;
         const LlmReply reply = call_model(llm_.model,
             analyst_prompt() + " Исправь черновик previous_draft: устрани все проблемы из issues_to_fix, используй новые материалы банка, если они есть.",
-            input.dump(), 1800, status);
+            input.dump(), kAnalysisMaxTokens, status);
         std::string decision;
         if (status == "complete") {
             try {

@@ -227,6 +227,12 @@ LlmReply llm_chat_model(const LlmConfig& base_config, const std::string& model, 
             reply.prompt_tokens = static_cast<long long>((system_prompt.size() + user_prompt.size()) / 3);
             reply.completion_tokens = static_cast<long long>(reply.content.size() / 3);
         }
+        // A reply cut at max_tokens is half a JSON document: report the cause instead of a parse error.
+        const json::Value& finish = choices.front().get("finish_reason");
+        if (finish.is_string() && finish.as_string() == "length") {
+            reply.error = "Model reply was cut at the token limit (finish_reason=length)";
+            return reply;
+        }
         reply.ok = true;
         return reply;
     } catch (const std::exception& e) {

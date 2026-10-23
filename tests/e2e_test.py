@@ -234,6 +234,21 @@ def agent_broken_model_reply_falls_back():
 
 
 @test
+def agent_reply_cut_by_token_limit_is_reported():
+    srv, proc, log = mock_server("truncated")
+    try:
+        company, news_id, _ = borrower_and_rate_news(srv)
+        status, insight, _ = srv.post("/api/v1/insights", {"company_id": company, "news_id": news_id})
+        assert status == 200, insight
+        assert insight["generation"]["method"] == "deterministic_fallback", insight["generation"]
+        assert "token limit" in insight["generation"]["warning"], insight["generation"]
+        assert insight["interpretation"]["why_it_matters"]
+    finally:
+        srv.stop()
+        proc.terminate()
+
+
+@test
 def agent_budget_exhausted_skips_model():
     srv, proc, log = mock_server("happy", {"ALFA_LLM_DAILY_TOKEN_LIMIT": "1"})
     try:
