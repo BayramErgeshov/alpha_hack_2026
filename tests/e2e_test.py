@@ -293,6 +293,20 @@ def insight_without_model_by_text():
     assert status == 404, bad
 
 
+@test
+def money_in_sources_is_readable_in_billions():
+    # The model writes "62,3 млрд руб."; the verifier and reviewer must find that number in C1/P1.
+    _, clients, _ = server().get("/api/v1/clients?limit=1")
+    company = clients["items"][0]
+    status, insight, _ = server().post("/api/v1/insights", {
+        "company_id": company["id"], "title": "Ставка", "text": "Банк России сохранил ключевую ставку 14%"})
+    assert status == 200, insight
+    c1 = json.loads(next(s for s in insight["sources"] if s["id"] == "C1")["excerpt"])
+    expected = round(company["revenue_rub"] / 1e9, 1)
+    assert c1["revenue_bln_rub"] == expected, (c1.get("revenue_bln_rub"), expected)
+    assert "payments_in_bln_rub" in c1 and "payments_out_bln_rub" in c1, c1
+
+
 # ---------------------------------------------------------------- feedback, metrics, offers, static UI
 @test
 def feedback_and_metrics_endpoints():

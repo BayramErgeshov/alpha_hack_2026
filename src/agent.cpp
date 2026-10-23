@@ -229,6 +229,8 @@ std::string planner_prompt() {
         "\"need_counterparties\":true,\"need_related_news\":true}.";
 }
 
+double billions(double rub) { return std::round(rub / 1e8) / 10.0; } // 62340483339 -> 62.3
+
 // A full analysis in Russian is ~1500-2500 tokens of JSON; 1800 cut real DeepSeek replies mid-document.
 constexpr int kAnalysisMaxTokens = 3000;
 // The reviewer lists issues in Russian; 500 tokens cut real GLM reviews mid-list.
@@ -375,6 +377,8 @@ json::Value InsightAgent::analyze(const std::string& company_id, const ArticleIn
     company_context["okved_code"] = company->okved_code;
     company_context["region"] = company->region.empty() ? json::Value(nullptr) : json::Value(company->region);
     company_context["revenue_rub"] = company->revenue > 0 ? json::Value(company->revenue) : json::Value(nullptr);
+    // Models quote money as "62,3 млрд руб."; the same figure must appear in the source for the verifier.
+    company_context["revenue_bln_rub"] = company->revenue > 0 ? json::Value(billions(company->revenue)) : json::Value(nullptr);
     company_context["revenue_percentile_in_industry_dataset"] = company->industry_percentile > 0 ? json::Value(company->industry_percentile) : json::Value(nullptr);
     company_context["meets_case_threshold"] = company->revenue >= 15000000000.0;
     company_context["client_type"] = company->client_type;
@@ -390,6 +394,8 @@ json::Value InsightAgent::analyze(const std::string& company_id, const ArticleIn
     company_context["related_company_count"] = company->related_companies;
     company_context["payments_in_rub"] = company->payments_in;
     company_context["payments_out_rub"] = company->payments_out;
+    company_context["payments_in_bln_rub"] = billions(company->payments_in);
+    company_context["payments_out_bln_rub"] = billions(company->payments_out);
     company_context["data_gaps"] = json::Value::array();
     for (const auto& gap : profile_gaps(*company)) company_context["data_gaps"].push_back(gap);
     company_context["missing_data_note"] = "Missing values are unknown; market share is not present in the supplied dataset";
@@ -492,6 +498,8 @@ json::Value InsightAgent::analyze(const std::string& company_id, const ArticleIn
         payment_network["counterparty_industries"] = json::Value::array();
         for (const auto& cp : cp_industries) payment_network["counterparty_industries"].push_back(cp);
         payment_network["top_counterparties"] = data_.network_json(*company).get("top_counterparties");
+        for (auto& cp : payment_network["top_counterparties"].as_array())
+            if (cp.get("amount_rub").is_number()) cp["amount_bln_rub"] = billions(cp.get("amount_rub").as_number());
         json::Value source = json::Value::object();
         source["id"] = "P1";
         source["type"] = "payment_network";
