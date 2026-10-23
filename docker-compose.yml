@@ -26,7 +26,8 @@ services:
   public-link:
     image: cloudflare/cloudflared:2024.12.2
     profiles: ["public"]
-    command: ["tunnel", "--no-autoupdate", "--url", "http://alpha-backend:8080"]
+    # http2 over TCP 443: QUIC (UDP 7844) is blocked on many networks, incl. the dev machine
+    command: ["tunnel", "--no-autoupdate", "--protocol", "http2", "--url", "http://alpha-backend:8080"]
     depends_on:
       - alpha-backend
     restart: unless-stopped
