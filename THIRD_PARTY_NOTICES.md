@@ -6,8 +6,10 @@
 - **pypdfium2 / PDFium** (Apache-2.0 / BSD-3) and **Pillow** (HPND) — only in `scripts/prepare_data.py` to extract text from the provided PDFs.
 - **Windows.Media.Ocr** (Windows system API) and optional **Tesseract** (Apache-2.0) — local OCR of PDF pages without a text layer; no external AI services.
 - **Debian 12** base image and packages (various free licenses) — Docker build and runtime.
-- **Playwright** — used only during development to check the UI in a browser; not part of the delivered solution.
-- `src/json.hpp` and `tests/test_harness.hpp` — written for this project.
+- **Playwright** (Apache-2.0) — only for the optional browser test `tests/ui/ui_e2e.py`; not part of the delivered service.
+- **Node.js** test runner — only for `tests/ui/core.test.cjs`; not part of the delivered service.
+- **Golos Text** font (SIL Open Font License 1.1, The Golos Text Project Authors) — bundled in `ui/assets/GolosText.ttf`; license in `ui/assets/OFL.txt`.
+- `src/json.hpp`, `tests/test_harness.hpp` and the UI in `ui/` (plain JavaScript, no frameworks) — written for this project.
 
 ## Language models (case allowlist only)
 Called through the organizers' OpenAI-compatible gateway (`https://changellenge.up.railway.app/v1` or `https://api.alfahack-gateway26.ru/v1`):
@@ -25,6 +27,7 @@ The other allowed models (`qwen/qwen3.6-35b-a3b`, `qwen/qwen3-vl-30b-a3b-instruc
 - RSS feeds of РБК, Интерфакс, ТАСС, Коммерсантъ, Ведомости and the Bank of Russia — read-only, public, at most every 30 minutes.
 
 ## Simulated integrations
-- **Alfa-Business internet bank** — the main screen, accounts, payments and credits tiles in `ui/` are mock-ups; there is no real authentication or banking data.
+- **Alfa-Business internet bank** — the home screen with accounts, payments and credits tiles (marked «демо») is a mock-up; there is no real authentication or banking data.
+- **Scenario calculator** — computes only from user-entered amount and rates; no market data feed.
 - **User–company binding** — the user picks a client from the dataset instead of SSO.
 - **Bank product offers** — product names are generic descriptions, not real tariffs.

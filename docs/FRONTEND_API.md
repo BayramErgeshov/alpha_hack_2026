@@ -4,7 +4,7 @@
 
 Ключ модели во фронт не передаётся никогда. Если задан `ALFA_API_TOKEN`, токен добавляет серверный прокси.
 
-Примеры реальных ответов: `docs/examples/v2-*.json`. Работающий эталон интерфейса: `ui/index.html`.
+Примеры реальных ответов: `docs/examples/v2-*.json`. Интерфейс: `ui/` (описание экранов — `docs/FRONTEND_NOTES.md`), браузерный тест — `tests/ui/ui_e2e.py`.
 
 ## Экраны и вызовы
 
@@ -20,7 +20,7 @@
 
 ## Карточка ленты (`items[]`)
 
-`news_id`, `title`, `summary`, `url`, `source`, `published` (ISO или `null`), `categories[]` и `category_labels[]`, `duplicates[{url,source}]` (та же история в других изданиях), `why_for_you` (строка «почему вам»), `relevance{score 0..1, band high|medium|low, reasons[]}`, `bank_hint{title, document, page, label}` или `null`.
+`news_id`, `title`, `summary`, `url`, `source`, `published` (ISO или `null`), `categories[]` и `category_labels[]`, `duplicates[{url,source}]` (та же история в других изданиях), `why_for_you` (строка «почему вам»), `relevance{score 0..1, band high|medium|low, reasons[], primary_category, primary_category_label}` (главная тема — почему событие важно этой компании), `bank_hint{title, document, page, label}` или `null`.
 
 ## Разбор (`POST /insights`)
 
