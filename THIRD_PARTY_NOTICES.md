@@ -24,6 +24,9 @@ The other allowed models (`qwen/qwen3.6-35b-a3b`, `qwen/qwen3-vl-30b-a3b-instruc
 - `data/news/seed.json` — 31 news items published by Russian media in 2026; titles and short summaries are written by the team, each item links to the original publication. Copyright in the original articles remains with their publishers.
 
 ## External services
+- Organizers' model gateway (Changellenge, `changellenge.up.railway.app` / `api.alfahack-gateway26.ru`) — the only AI service; the key stays on the backend.
+- **SnapDeploy** (AAR Labs) — free hosting of the public demo built from this repository's `Dockerfile`; no code or data beyond the repository is uploaded, the model key is a container secret.
+- **Cloudflare Quick Tunnel** via the `cloudflare/cloudflared` image (Apache-2.0) — optional public link from a developer machine (`start-public.cmd`).
 - RSS feeds of РБК, Интерфакс, ТАСС, Коммерсантъ, Ведомости and the Bank of Russia — read-only, public, at most every 30 minutes.
 
 ## Simulated integrations
