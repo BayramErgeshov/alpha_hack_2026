@@ -307,6 +307,28 @@ def money_in_sources_is_readable_in_billions():
     assert "payments_in_bln_rub" in c1 and "payments_out_bln_rub" in c1, c1
 
 
+@test
+def platform_port_variable_wins():
+    # Hosting platforms (SnapDeploy, Render, Railway) tell the app where to listen via PORT.
+    own, platform = free_port(), free_port()
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("ALFA_", "OPENAI_"))}
+    env.update({"ALFA_PORT": str(own), "PORT": str(platform), "ALFA_HOST": "127.0.0.1", "ALFA_NEWS_REFRESH_MINUTES": "0",
+                "ALFA_WORK_DIR": os.path.join(ROOT, "build", "e2e-work-%d" % platform)})
+    proc = subprocess.Popen([BINARY], cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        deadline, ok = time.time() + 60, False
+        while time.time() < deadline and not ok:
+            try:
+                with urllib.request.urlopen("http://127.0.0.1:%d/health" % platform, timeout=2) as r:
+                    ok = r.status == 200
+            except OSError:
+                time.sleep(0.3)
+        assert ok, "server must listen on PORT when the platform sets it"
+    finally:
+        proc.terminate()
+        proc.wait(5)
+
+
 # ---------------------------------------------------------------- feedback, metrics, offers, static UI
 @test
 def feedback_and_metrics_endpoints():

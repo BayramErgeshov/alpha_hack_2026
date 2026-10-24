@@ -5,7 +5,10 @@
 ## Публичная ссылка с компьютера (без аккаунтов, 5 минут)
 Дважды щёлкните `start-public.cmd` (или `docker compose --profile public up --build -d`). Рядом с сервисом поднимается туннель Cloudflare, и скрипт печатает и открывает ссылку вида `https://<слова>.trycloudflare.com`. Ссылка работает с любого устройства, пока компьютер и Docker включены, и меняется после перезапуска. Ключ остаётся в контейнере сервиса, расход модели ограничен `ALFA_LLM_DAILY_TOKEN_LIMIT`. Остановить: `stop-demo.cmd`.
 
-## Railway (без карты, пробный кредит на 30 дней)
+## SnapDeploy (без карты, собирает Dockerfile из GitHub)
+Deploy Your Application → Deploy from GitHub → репозиторий, ветка `main`, размер Small (512 МБ). Порт определяется по `EXPOSE`, платформа передаёт его в `PORT` — сервис слушает `PORT`, если он задан. В Environment Variables добавьте `ALFA_LLM_API_KEY`. Бесплатный контейнер засыпает после 15 минут без посетителей и просыпается примерно за минуту: перед показом откройте ссылку заранее.
+
+## Railway (без карты, пробный кредит на 30 дней; в октябре 2026 регистрация временно закрыта)
 New Project → Deploy from GitHub repo → этот репозиторий. Railway соберёт `Dockerfile`; в Variables задайте `ALFA_LLM_API_KEY` и `PORT=8080`, в Settings → Networking → Generate Domain с портом 8080.
 
 ## Hugging Face Spaces (Docker-спейсы требуют платный тариф PRO) (бесплатно, без банковской карты)

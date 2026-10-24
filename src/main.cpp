@@ -31,7 +31,8 @@ std::string env(const char* name, const char* fallback) {
 }
 
 unsigned short port_from_env() {
-    const std::string value = env("ALFA_PORT", "8080");
+    // PORT is set by hosting platforms (SnapDeploy, Render, Railway) and must win over our own default.
+    const std::string value = env("PORT", env("ALFA_PORT", "8080").c_str());
     try { return static_cast<unsigned short>(std::clamp(std::stoi(value), 1, 65535)); }
     catch (...) { return 8080; }
 }
