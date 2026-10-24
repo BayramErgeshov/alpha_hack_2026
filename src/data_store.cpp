@@ -149,7 +149,6 @@ std::string dataset_path(const std::string& data_dir, const std::string& file) {
     return data_dir + ((last == '/' || last == '\\') ? "" : "/") + file;
 }
 
-struct PaymentAggregate { double amount = 0; long long count = 0; };
 struct NumericPartner { uint32_t id = 0; bool outgoing = false; double amount = 0; long long count = 0; };
 
 } // namespace
@@ -254,12 +253,10 @@ void DataStore::apply_relationships(const std::string& path) {
         by_person[person].push_back(it->second);
         people_by_company[it->second].insert(person);
     }
-    std::vector<std::unordered_set<size_t>> related_by_company(companies_.size());
-    for (const auto& group : by_group_) {
-        for (size_t index : group.second) {
-            for (size_t other : group.second) if (other != index) related_by_company[index].insert(other);
-        }
-    }
+    // Related companies = other members of the same group + companies sharing a linked person.
+    // Group cliques are counted, not materialised: large groups made the pairwise sets quadratic
+    // (~380 MB transient at start-up on the case data).
+    std::vector<std::vector<size_t>> linked_by_person(companies_.size());
     for (auto& item : by_person) {
         auto& indices = item.second;
         std::sort(indices.begin(), indices.end());
@@ -267,18 +264,29 @@ void DataStore::apply_relationships(const std::string& path) {
         if (indices.empty()) continue;
         ++relationship_count_;
         if (indices.size() < 2) continue;
-        for (size_t index : indices) {
-            for (size_t other : indices) if (other != index) related_by_company[index].insert(other);
-        }
+        for (size_t index : indices)
+            for (size_t other : indices) if (other != index) linked_by_person[index].push_back(other);
+    }
+    for (size_t index = 0; index < companies_.size(); ++index) {
+        const std::string& group = companies_[index].group_id;
+        const auto group_it = group.empty() ? by_group_.end() : by_group_.find(group);
+        size_t related = group_it == by_group_.end() ? 0 : group_it->second.size() - 1;
+        auto& others = linked_by_person[index];
+        std::sort(others.begin(), others.end());
+        others.erase(std::unique(others.begin(), others.end()), others.end());
+        for (size_t other : others)
+            if (group.empty() || companies_[other].group_id != group) ++related;
+        companies_[index].related_companies = static_cast<int>(related);
     }
     for (const auto& item : people_by_company) {
         companies_[item.first].linked_people = static_cast<int>(item.second.size());
     }
-    for (size_t index = 0; index < companies_.size(); ++index)
-        companies_[index].related_companies = static_cast<int>(related_by_company[index].size());
 }
 
 void DataStore::apply_payments(const std::string& path) {
+    // Memory matters on 512 MB hosts: 1.4M payment rows are aggregated in a flat sorted array
+    // (24 bytes per row) and each company keeps only its top-8 partners, instead of a hash map
+    // of edges plus full adjacency lists (that peaked at ~470 MB during start-up).
     std::ifstream input(path, std::ios::binary);
     if (!input) return;
     DelimitedReader reader(input);
@@ -286,55 +294,72 @@ void DataStore::apply_payments(const std::string& path) {
     if (!reader.next(header)) return;
     std::unordered_map<std::string, size_t> columns;
     for (size_t i = 0; i < header.size(); ++i) columns[trim_ascii(header[i])] = i;
-    std::unordered_map<uint64_t, PaymentAggregate> edges;
-    edges.reserve(1'600'000);
+
+    struct Edge { uint64_t key; double amount; long long count; };
+    std::vector<Edge> edges;
     while (reader.next(row)) {
         const uint32_t beneficiary = uid_number(field(row, columns, "BENEFICIARY"));
         const uint32_t payer = uid_number(field(row, columns, "PAYER"));
         if (!beneficiary || !payer) continue;
-        const double amount = number(field(row, columns, "PAY_AMT"));
-        const long long count = integer(field(row, columns, "PAY_CNT"));
-        const uint64_t key = (static_cast<uint64_t>(payer) << 32) | beneficiary;
-        auto& aggregate = edges[key];
-        aggregate.amount += amount;
-        aggregate.count += count;
+        edges.push_back({ (static_cast<uint64_t>(payer) << 32) | beneficiary,
+            number(field(row, columns, "PAY_AMT")), integer(field(row, columns, "PAY_CNT")) });
     }
-
-    std::unordered_map<uint32_t, std::vector<NumericPartner>> adjacency;
-    adjacency.reserve(100'000);
-    for (const auto& edge : edges) {
-        const uint32_t payer = static_cast<uint32_t>(edge.first >> 32);
-        const uint32_t beneficiary = static_cast<uint32_t>(edge.first & 0xFFFFFFFFu);
-        const auto& amount = edge.second;
-        adjacency[payer].push_back({ beneficiary, true, amount.amount, amount.count });
-        adjacency[beneficiary].push_back({ payer, false, amount.amount, amount.count });
-        auto payer_it = by_id_.find(uid_string(payer));
-        if (payer_it != by_id_.end()) {
-            auto& company = companies_[payer_it->second];
-            company.payments_out += amount.amount;
-            company.payment_count_out += amount.count;
-        }
-        auto beneficiary_it = by_id_.find(uid_string(beneficiary));
-        if (beneficiary_it != by_id_.end()) {
-            auto& company = companies_[beneficiary_it->second];
-            company.payments_in += amount.amount;
-            company.payment_count_in += amount.count;
+    std::sort(edges.begin(), edges.end(), [](const Edge& a, const Edge& b) { return a.key < b.key; });
+    size_t merged = 0;
+    for (size_t i = 0; i < edges.size(); ++i) {
+        if (merged > 0 && edges[merged - 1].key == edges[i].key) {
+            edges[merged - 1].amount += edges[i].amount;
+            edges[merged - 1].count += edges[i].count;
+        } else {
+            edges[merged++] = edges[i];
         }
     }
+    edges.resize(merged);
+    edges.shrink_to_fit();
     payment_edge_count_ = edges.size();
-    for (auto& item : adjacency) {
-        auto company_it = by_id_.find(uid_string(item.first));
-        if (company_it == by_id_.end()) continue;
-        auto& partners = item.second;
-        std::sort(partners.begin(), partners.end(), [](const NumericPartner& a, const NumericPartner& b) {
-            if (a.amount != b.amount) return a.amount > b.amount;
-            return a.count > b.count;
-        });
-        auto& profile = companies_[company_it->second];
-        const size_t limit = std::min<size_t>(8, partners.size());
-        profile.counterparties.reserve(limit);
-        for (size_t i = 0; i < limit; ++i) {
-            const auto& partner = partners[i];
+
+    std::unordered_map<uint32_t, size_t> index_by_number;
+    index_by_number.reserve(companies_.size());
+    for (size_t i = 0; i < companies_.size(); ++i) {
+        const uint32_t n = uid_number(companies_[i].id);
+        if (n && uid_string(n) == companies_[i].id) index_by_number[n] = i;
+    }
+    constexpr size_t kTop = 8;
+    const auto better = [](const NumericPartner& a, const NumericPartner& b) { // deterministic, ties by id
+        if (a.amount != b.amount) return a.amount > b.amount;
+        if (a.count != b.count) return a.count > b.count;
+        if (a.id != b.id) return a.id < b.id;
+        return a.outgoing && !b.outgoing;
+    };
+    std::vector<std::vector<NumericPartner>> top(companies_.size());
+    const auto offer = [&](size_t company, const NumericPartner& partner) {
+        auto& list = top[company];
+        if (list.size() == kTop && !better(partner, list.back())) return;
+        list.insert(std::upper_bound(list.begin(), list.end(), partner, better), partner);
+        if (list.size() > kTop) list.pop_back();
+    };
+    for (const auto& edge : edges) {
+        const uint32_t payer = static_cast<uint32_t>(edge.key >> 32);
+        const uint32_t beneficiary = static_cast<uint32_t>(edge.key & 0xFFFFFFFFu);
+        const auto payer_it = index_by_number.find(payer);
+        if (payer_it != index_by_number.end()) {
+            auto& company = companies_[payer_it->second];
+            company.payments_out += edge.amount;
+            company.payment_count_out += edge.count;
+            offer(payer_it->second, { beneficiary, true, edge.amount, edge.count });
+        }
+        const auto beneficiary_it = index_by_number.find(beneficiary);
+        if (beneficiary_it != index_by_number.end()) {
+            auto& company = companies_[beneficiary_it->second];
+            company.payments_in += edge.amount;
+            company.payment_count_in += edge.count;
+            offer(beneficiary_it->second, { payer, false, edge.amount, edge.count });
+        }
+    }
+    for (size_t i = 0; i < companies_.size(); ++i) {
+        auto& profile = companies_[i];
+        profile.counterparties.reserve(top[i].size());
+        for (const auto& partner : top[i]) {
             const std::string partner_id = uid_string(partner.id);
             profile.counterparties.push_back({ partner_id, partner.outgoing ? "outgoing" : "incoming",
                 partner.amount, partner.count, by_id_.find(partner_id) != by_id_.end() });

@@ -10,6 +10,8 @@
 #include "offers.hpp"
 #include "metrics.hpp"
 
+#include <filesystem>
+#include <fstream>
 #include <cstdlib>
 #include <algorithm>
 #include <memory>
@@ -427,6 +429,38 @@ TEST(competitor_bank_results_are_background_not_top) {
     const std::string t3 = "Сбербанк и ВТБ повысили ставки по корпоративным кредитам вслед за ЦБ";
     const json::Value loans = score_relevance(borrower, t3, "", classify_news(t3), {}, role_or_default("cfo"));
     CHECK(!loans.get("competitor_bank_news").as_bool());
+}
+
+TEST(relationships_and_counterparties_on_small_dataset) {
+    namespace fs = std::filesystem;
+    const fs::path dir = fs::temp_directory_path() / "alfa-ds-test";
+    fs::create_directories(dir);
+    {
+        std::ofstream c(dir / "df_Uid_data_hack.csv");
+        c << "SYNTHETIC_U;MAINOKVED_NAME;REVENUE_COMPANY;GROUP_ID\n";
+        c << "U_1;A;20000000000;G1\nU_2;A;20000000000;G1\nU_3;A;20000000000;G1\nU_4;A;20000000000;\nU_5;A;20000000000;G2\n";
+        std::ofstream f(dir / "df_Fid_Uid_link_hack.csv");
+        f << "SYNTHETIC_F;SYNTHETIC_U\nF_1;U_1\nF_1;U_4\nF_2;U_2\nF_2;U_3\n";
+        std::ofstream p(dir / "df_Uid_payment_hack.csv");
+        p << "BENEFICIARY;PAYER;PAY_AMT;PAY_CNT\n";
+        p << "U_2;U_1;100;1\nU_2;U_1;50;2\nU_3;U_1;150;3\nU_9;U_1;150;3\nU_1;U_4;10;1\n";
+    }
+    DataStore ds;
+    std::string error;
+    CHECK(ds.load(dir.string(), error));
+    // U_1: group G1 (U_2, U_3) + person F_1 links U_4 -> 3; the same-group person link U_2-U_3 is not double counted.
+    CHECK(ds.find("U_1")->related_companies == 3);
+    CHECK(ds.find("U_2")->related_companies == 2);
+    CHECK(ds.find("U_4")->related_companies == 1);
+    CHECK(ds.find("U_5")->related_companies == 0);
+    const auto& cps = ds.find("U_1")->counterparties;
+    CHECK(cps.size() == 4);
+    // 150/3 tie between U_3 and U_9 is broken by id; duplicate rows U_1->U_2 are merged (150, 3 payments).
+    CHECK(cps[0].company_id == "U_2" && cps[0].amount == 150 && cps[0].payment_count == 3);
+    CHECK(cps[1].company_id == "U_3" && cps[2].company_id == "U_9");
+    CHECK(cps[3].company_id == "U_4" && cps[3].direction == "incoming");
+    CHECK(ds.find("U_1")->payments_out == 450 && ds.find("U_1")->payments_in == 10);
+    fs::remove_all(dir);
 }
 
 int main(int argc, char** argv) { return run_all_tests(argc > 1 ? argv[1] : ""); }
