@@ -280,6 +280,7 @@ def bank_materials_are_named_when_bank_has_no_direct_position():
         used = interp["bank_materials_used"]
         sources = {s["id"]: s for s in insight["sources"]}
         assert used and all(u["id"].startswith("A") and u["id"] in sources and u["title"] for u in used), used
+        assert not any(u["title"].endswith(".md") for u in used), used  # human titles, not file names
     finally:
         srv.stop()
         proc.terminate()

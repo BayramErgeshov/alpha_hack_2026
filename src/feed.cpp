@@ -71,6 +71,9 @@ double freshness(long long epoch, long long now) {
     return 1.0 / (1.0 + age_days / 10.0);
 }
 
+
+} // namespace
+
 std::string bank_document_title(const std::string& file) {
     static const std::pair<const char*, const char*> titles[] = {
         { "Inflation_tracker", "Инфляция: основные выводы" },
@@ -86,8 +89,6 @@ std::string bank_document_title(const std::string& file) {
     for (const auto& t : titles) if (file.find(t.first) != std::string::npos) return t.second;
     return file;
 }
-
-} // namespace
 
 const std::vector<RoleInfo>& roles() {
     static const std::vector<RoleInfo> list = {

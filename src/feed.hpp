@@ -40,5 +40,8 @@ std::vector<std::string> profile_gaps(const CompanyProfile& company);
 // Calibrated on the live feed (500 news): joins retellings, keeps related-but-different news apart.
 bool same_story(const NewsItem& a, const NewsItem& b, const std::vector<NewsItem>& corpus);
 
+// Human title of an Alfa-Bank analytics document from its file name (falls back to the file name).
+std::string bank_document_title(const std::string& file);
+
 json::Value build_feed(const DataStore& data, const AnalyticsIndex& analytics, const NewsStore& news,
     const CompanyProfile& company, const std::string& role_id, size_t limit);

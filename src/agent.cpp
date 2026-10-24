@@ -866,7 +866,8 @@ json::Value InsightAgent::analyze(const std::string& company_id, const ArticleIn
                 if (s.get("id").as_string() != id) continue;
                 json::Value u = json::Value::object();
                 u["id"] = id;
-                u["title"] = s.get("title").is_string() ? s.get("title") : s.get("document");
+                u["title"] = s.get("document").is_string() ? json::Value(bank_document_title(s.get("document").as_string()))
+                                                            : s.get("title");
                 u["page"] = s.get("page");
                 used.push_back(std::move(u));
             }
