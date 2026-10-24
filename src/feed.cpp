@@ -138,9 +138,6 @@ std::vector<std::string> story_tokens(const std::string& text) {
     return out;
 }
 
-constexpr size_t kRarityWindow = 500;
-using StoryRarity = std::unordered_map<std::string, int>; // stem -> number of news whose title + lead contain it
-
 struct StoryKey {
     long long epoch = 0;
     std::vector<std::string> title, lead;
@@ -151,15 +148,47 @@ StoryKey story_key(const NewsItem& item) {
              story_tokens(item.title + " " + textutil::truncate_utf8(item.summary, 320)) };
 }
 
+// How common a word stem is around a given time: news are counted in 12-hour buckets, and rarity
+// for a pair is measured over the pair's time +/- 36 hours. Thresholds were calibrated on ~500 news,
+// so they scale with the number of news in that window.
+class StoryRarity {
+public:
+    explicit StoryRarity(const std::vector<StoryKey>& keys) {
+        for (const auto& key : keys) {
+            if (key.epoch <= 0) continue;
+            auto& bucket = buckets_[key.epoch / kBucket];
+            ++bucket.size;
+            for (const auto& stem : key.lead) ++bucket.count[stem];
+        }
+    }
+    // Number of news around [from, to] (+/- 36 h) containing the stem, and the size of that window.
+    std::pair<int, int> around(const std::string& stem, long long from, long long to) const {
+        int df = 0, n = 0;
+        for (long long b = (from - kSpan) / kBucket; b <= (to + kSpan) / kBucket; ++b) {
+            const auto it = buckets_.find(b);
+            if (it == buckets_.end()) continue;
+            n += it->second.size;
+            const auto c = it->second.count.find(stem);
+            if (c != it->second.count.end()) df += c->second;
+        }
+        return { df, n };
+    }
+
+private:
+    static constexpr long long kBucket = 12LL * 3600, kSpan = 36LL * 3600;
+    struct Bucket { int size = 0; std::unordered_map<std::string, int> count; };
+    std::unordered_map<long long, Bucket> buckets_;
+};
+
 bool overlaps(const std::vector<std::string>& a, const std::vector<std::string>& b, const StoryRarity& rarity,
-    int rare_limit, size_t rare_needed) {
+    long long from, long long to, int rare_limit, size_t rare_needed) {
     if (a.empty() || b.empty()) return false;
     size_t common = 0, rare = 0;
     for (const auto& x : a) {
         if (std::find(b.begin(), b.end(), x) == b.end()) continue;
         ++common;
-        const auto it = rarity.find(x);
-        if (it == rarity.end() || it->second <= rare_limit) ++rare;
+        const auto [df, n] = rarity.around(x, from, to);
+        if (df <= rare_limit * std::max(1.0, n / 500.0)) ++rare;
     }
     return common >= 3 && static_cast<double>(common) >= 0.6 * static_cast<double>(std::min(a.size(), b.size())) &&
         rare >= rare_needed;
@@ -168,20 +197,15 @@ bool overlaps(const std::vector<std::string>& a, const std::vector<std::string>&
 bool same_story(const StoryKey& a, const StoryKey& b, const StoryRarity& rarity) {
     if (a.epoch <= 0 || b.epoch <= 0) return false;
     if (std::llabs(a.epoch - b.epoch) > 36LL * 3600) return false;
-    return overlaps(a.title, b.title, rarity, 2, 1) || overlaps(a.lead, b.lead, rarity, 3, 2);
-}
-
-StoryRarity story_rarity(const std::vector<StoryKey>& keys) {
-    StoryRarity rarity;
-    for (const auto& key : keys) for (const auto& stem : key.lead) ++rarity[stem];
-    return rarity;
+    const long long from = std::min(a.epoch, b.epoch), to = std::max(a.epoch, b.epoch);
+    return overlaps(a.title, b.title, rarity, from, to, 2, 1) || overlaps(a.lead, b.lead, rarity, from, to, 3, 2);
 }
 } // namespace
 
 bool same_story(const NewsItem& a, const NewsItem& b, const std::vector<NewsItem>& corpus) {
     std::vector<StoryKey> keys;
     for (const auto& item : corpus) keys.push_back(story_key(item));
-    return same_story(story_key(a), story_key(b), story_rarity(keys));
+    return same_story(story_key(a), story_key(b), StoryRarity(keys));
 }
 
 namespace {
@@ -327,16 +351,12 @@ json::Value build_feed(const DataStore& data, const AnalyticsIndex& analytics, c
         const double rank = rel.get("score").as_number() * (0.55 + 0.45 * fresh);
         ranked.push_back({ std::move(item), std::move(rel), rank });
     }
-    // Word rarity is measured on the 500 most recent news (ranked is still in recency order here):
-    // the window the rule was calibrated on, so it does not drift as the archive grows.
-    std::vector<StoryKey> recent_keys;
-    for (size_t i = 0; i < ranked.size() && i < kRarityWindow; ++i) recent_keys.push_back(story_key(ranked[i].item));
-    const StoryRarity rarity = story_rarity(recent_keys);
     std::stable_sort(ranked.begin(), ranked.end(), [](const Ranked& a, const Ranked& b) { return a.rank > b.rank; });
     // One card per event: retellings by other outlets are attached to the highest-ranked publication.
     std::vector<StoryKey> keys;
     keys.reserve(ranked.size());
     for (const auto& r : ranked) keys.push_back(story_key(r.item));
+    const StoryRarity rarity(keys); // same index as same_story(): rarity around the time of each pair
     std::vector<Ranked> cards;
     std::vector<size_t> card_index;
     std::vector<std::vector<const NewsItem*>> also(ranked.size());

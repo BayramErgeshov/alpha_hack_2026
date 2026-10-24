@@ -533,7 +533,7 @@ TEST(feed_shows_one_card_per_event_with_other_sources) {
     CHECK(others_attached == 2);
 }
 
-TEST(story_rarity_uses_the_recent_window_not_the_whole_archive) {
+TEST(story_rarity_is_measured_around_the_time_of_the_pair) {
     // Calibrated on the 500 most recent news: words that were frequent days ago in the archive
     // must not stop today's retellings from being joined as the store grows.
     const long long now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -554,6 +554,18 @@ TEST(story_rarity_uses_the_recent_window_not_the_whole_archive) {
     news.add(story("Коммерсантъ", "Набиуллина выступила против увеличения объемов льготной ипотеки",
         "Льготная ипотека в России должна быть ограничена, заявила глава Банка России Эльвира Набиуллина.", now - 600));
     news.add(story("Ведомости", "Набиуллина заявила о необходимости ограничить объемы льготной ипотеки", "", now - 2400));
+    // An older pair outside the newest 500: its everyday words must still count as common around its own time.
+    news.add(story("Коммерсантъ", "Квартальная чистая прибыль ФосАгро упала на 40%", "", now - 5 * 86400));
+    news.add(story("Ведомости", "Квартальная чистая прибыль Tesla упала на 43%", "", now - 5 * 86400 - 900));
+    for (const char* company : { "Северсталь", "Аэрофлот", "Магнит", "Сегежа", "Ozon" })
+        news.add(story("ТАСС", std::string("Квартальная чистая прибыль ") + company + " упала", "", now - 5 * 86400 - 4000));
+    const auto all = news.recent(2000);
+    NewsItem phosagro, tesla;
+    for (const auto& n : all) {
+        if (n.title.find("ФосАгро") != std::string::npos) phosagro = n;
+        if (n.title.find("Tesla") != std::string::npos) tesla = n;
+    }
+    CHECK(!same_story(phosagro, tesla, all));
     CompanyProfile builder = profile("T_HOUSE", "Строительство жилых и нежилых зданий", true, false);
     const json::Value feed = build_feed(store(), analytics(), news, builder, "ceo", 5);
     size_t cards = 0, attached = 0;
