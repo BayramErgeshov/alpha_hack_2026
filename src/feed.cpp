@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <unordered_map>
 
 namespace {
 
@@ -137,15 +138,8 @@ std::vector<std::string> story_tokens(const std::string& text) {
     return out;
 }
 
-bool overlaps(const std::vector<std::string>& a, const std::vector<std::string>& b) {
-    if (a.empty() || b.empty()) return false;
-    size_t common = 0;
-    for (const auto& x : a) if (std::find(b.begin(), b.end(), x) != b.end()) ++common;
-    return common >= 3 && static_cast<double>(common) >= 0.6 * static_cast<double>(std::min(a.size(), b.size()));
-}
-} // namespace
+using StoryRarity = std::unordered_map<std::string, int>; // stem -> number of news whose title + lead contain it
 
-namespace {
 struct StoryKey {
     long long epoch = 0;
     std::vector<std::string> title, lead;
@@ -156,14 +150,38 @@ StoryKey story_key(const NewsItem& item) {
              story_tokens(item.title + " " + textutil::truncate_utf8(item.summary, 320)) };
 }
 
-bool same_story(const StoryKey& a, const StoryKey& b) {
+bool overlaps(const std::vector<std::string>& a, const std::vector<std::string>& b, const StoryRarity& rarity,
+    int rare_limit, size_t rare_needed) {
+    if (a.empty() || b.empty()) return false;
+    size_t common = 0, rare = 0;
+    for (const auto& x : a) {
+        if (std::find(b.begin(), b.end(), x) == b.end()) continue;
+        ++common;
+        const auto it = rarity.find(x);
+        if (it == rarity.end() || it->second <= rare_limit) ++rare;
+    }
+    return common >= 3 && static_cast<double>(common) >= 0.6 * static_cast<double>(std::min(a.size(), b.size())) &&
+        rare >= rare_needed;
+}
+
+bool same_story(const StoryKey& a, const StoryKey& b, const StoryRarity& rarity) {
     if (a.epoch <= 0 || b.epoch <= 0) return false;
     if (std::llabs(a.epoch - b.epoch) > 36LL * 3600) return false;
-    return overlaps(a.title, b.title) || overlaps(a.lead, b.lead);
+    return overlaps(a.title, b.title, rarity, 2, 1) || overlaps(a.lead, b.lead, rarity, 3, 2);
+}
+
+StoryRarity story_rarity(const std::vector<StoryKey>& keys) {
+    StoryRarity rarity;
+    for (const auto& key : keys) for (const auto& stem : key.lead) ++rarity[stem];
+    return rarity;
 }
 } // namespace
 
-bool same_story(const NewsItem& a, const NewsItem& b) { return same_story(story_key(a), story_key(b)); }
+bool same_story(const NewsItem& a, const NewsItem& b, const std::vector<NewsItem>& corpus) {
+    std::vector<StoryKey> keys;
+    for (const auto& item : corpus) keys.push_back(story_key(item));
+    return same_story(story_key(a), story_key(b), story_rarity(keys));
+}
 
 namespace {
 // Another bank's own results (profit, loan book, reporting) are background for a corporate client,
@@ -310,16 +328,19 @@ json::Value build_feed(const DataStore& data, const AnalyticsIndex& analytics, c
     }
     std::stable_sort(ranked.begin(), ranked.end(), [](const Ranked& a, const Ranked& b) { return a.rank > b.rank; });
     // One card per event: retellings by other outlets are attached to the highest-ranked publication.
+    std::vector<StoryKey> keys;
+    keys.reserve(ranked.size());
+    for (const auto& r : ranked) keys.push_back(story_key(r.item));
+    const StoryRarity rarity = story_rarity(keys);
     std::vector<Ranked> cards;
-    std::vector<StoryKey> card_keys;
+    std::vector<size_t> card_index;
     std::vector<std::vector<const NewsItem*>> also(ranked.size());
-    for (auto& candidate : ranked) {
-        const StoryKey key = story_key(candidate.item);
+    for (size_t i = 0; i < ranked.size(); ++i) {
         bool attached = false;
         for (size_t c = 0; c < cards.size() && !attached; ++c) {
-            if (same_story(card_keys[c], key)) { also[c].push_back(&candidate.item); attached = true; }
+            if (same_story(keys[card_index[c]], keys[i], rarity)) { also[c].push_back(&ranked[i].item); attached = true; }
         }
-        if (!attached && cards.size() < limit) { cards.push_back(candidate); card_keys.push_back(key); }
+        if (!attached && cards.size() < limit) { cards.push_back(ranked[i]); card_index.push_back(i); }
     }
 
     json::Value items = json::Value::array();

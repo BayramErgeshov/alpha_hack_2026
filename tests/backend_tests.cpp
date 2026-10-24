@@ -486,14 +486,21 @@ TEST(same_story_joins_retellings_and_keeps_distinct_events) {
     const NewsItem shokhin = story("Ведомости", "Шохин: бизнес не ожидает снижения ключевой ставки ЦБ", "", t - 7200);
     const NewsItem grushko = story("Коммерсантъ", "Грушко: России не важна личность переговорщика от Европы, главное — его позиция", "", t);
     const NewsItem peskov = story("Ведомости", "Песков: переговоры с представителями Европы исключать нельзя", "", t - 3600);
-    CHECK(same_story(iran_ved, iran_kom));
-    CHECK(same_story(iran_ved, iran_tass));
-    CHECK(same_story(mortgage_kom, mortgage_ved));
-    CHECK(!same_story(aksakov, shokhin));
-    CHECK(!same_story(grushko, peskov));
-    CHECK(!same_story(iran_ved, mortgage_kom));
+    // Two companies' results share only common words: the corpus shows these words are everyday news.
+    const NewsItem phosagro = story("Коммерсантъ", "Квартальная чистая прибыль ФосАгро упала на 40%", "", t);
+    const NewsItem tesla = story("Ведомости", "Квартальная чистая прибыль Tesla упала на 43%", "", t - 900);
+    std::vector<NewsItem> corpus = { iran_ved, iran_kom, iran_tass, mortgage_kom, mortgage_ved, aksakov, shokhin, grushko, peskov, phosagro, tesla };
+    for (const char* company : { "Северсталь", "Аэрофлот", "Магнит", "Сегежа", "Ozon" })
+        corpus.push_back(story("ТАСС", std::string("Квартальная чистая прибыль ") + company + " упала", "", t - 4000));
+    CHECK(same_story(iran_ved, iran_kom, corpus));
+    CHECK(same_story(iran_ved, iran_tass, corpus));
+    CHECK(same_story(mortgage_kom, mortgage_ved, corpus));
+    CHECK(!same_story(aksakov, shokhin, corpus));
+    CHECK(!same_story(grushko, peskov, corpus));
+    CHECK(!same_story(iran_ved, mortgage_kom, corpus));
+    CHECK(!same_story(phosagro, tesla, corpus));
     NewsItem iran_old = iran_kom; iran_old.published_epoch = t - 4 * 86400;
-    CHECK(!same_story(iran_ved, iran_old)); // a repeat of the topic days later is a new event
+    CHECK(!same_story(iran_ved, iran_old, corpus)); // a repeat of the topic days later is a new event
 }
 
 TEST(feed_shows_one_card_per_event_with_other_sources) {
