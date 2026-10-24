@@ -11,7 +11,7 @@ function claims(title, list, sources, kind) {
   if (!list || !list.length) return null;
   return el("div", { class: "block " + (kind || "") }, kind === "ai" ? el("span", { class: "label ai" }, "Вывод AI") : null,
     el("h3", { style: "margin-top:0" }, title),
-    el("ul", {}, list.map((c) => el("li", {}, c.text, c.supported_by_cited_source === false ? el("span",{class:"ev unsupported"}," · требует проверки") : null, c.horizon ? el("span", { class: "ev" }, " · " + c.horizon) : null, evidence(c.evidence_ids, sources)))));
+    el("ul", {}, list.map((c) => el("li", {}, c.text, c.supported_by_cited_source === false ? el("span",{class:"ev unsupported"}," · требует проверки") : null, c.horizon ? el("span", { class: "ev" }, " · " + c.horizon) : null, c.uses_bank_material ? el("span", { class: "ev bank-basis" }, " · по материалам Альфа-Банка") : null, evidence(c.evidence_ids, sources)))));
 }
 
 function renderInsight(d) {
@@ -29,7 +29,10 @@ function renderInsight(d) {
     claims("Возможности", i.opportunities, sources, "ai"),
     claims("Что можно сделать", i.possible_actions, sources, "ai"),
     i.bank_position && (i.bank_position.evidence_ids || []).some(id => id.startsWith('A') && sources[id]) ? el("div", { class: "block bank" }, el("span", { class: "label bank" }, "Позиция Альфа-Банка"), el("div", {}, i.bank_position.text, evidence(i.bank_position.evidence_ids, sources))) :
-      el("div", { class: "block bank" }, el("span", { class: "label bank" }, "Позиция Альфа-Банка"), el("div", { class: "muted" }, "В ответе нет позиции, подтверждённой ссылкой на материал банка. Связанные материалы можно посмотреть в источниках.")),
+      el("div", { class: "block bank" }, el("span", { class: "label bank" }, "Позиция Альфа-Банка"), (i.bank_materials_used || []).length ?
+        el("div", { class: "muted" }, "Прямой оценки этого события в материалах банка нет. Выводы с пометкой «по материалам Альфа-Банка» опираются на его аналитику: ",
+          ...(i.bank_materials_used).flatMap((m, k) => [k ? "; " : "", `«${m.title}»` + (m.page ? `, стр. ${m.page}` : ""), evidence([m.id], sources)])) :
+        el("div", { class: "muted" }, "В ответе нет позиции, подтверждённой ссылкой на материал банка. Связанные материалы можно посмотреть в источниках.")),
     ...(d.offers || []).map((o) => el("div", { class: "block" }, el("span", { class: "label ad" }, o.label + " · реклама"), el("div", {}, el("b", {}, o.product + ". "), o.text), el("div", { class: "small muted" }, "Почему предлагаем: " + o.reason))),
     i.uncertainties.length ? el("details", {}, el("summary", {}, `Неопределённости (${i.uncertainties.length})`), el("ul", {}, i.uncertainties.map((u) => el("li", { class: "small" }, u)))) : null,
     el("details", {id:"sources-details"}, el("summary", {}, `Источники (${d.sources.length})`), el("ul", {}, d.sources.map((s) => {

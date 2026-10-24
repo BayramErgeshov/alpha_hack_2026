@@ -115,6 +115,57 @@ const RoleInfo& role_or_default(const std::string& id) {
 }
 
 namespace {
+std::vector<std::string> story_tokens(const std::string& text) {
+    static const std::vector<std::string> stop = { "после", "через", "против", "более", "менее", "также", "может",
+        "могут", "будет", "были", "было", "этого", "этой", "этот", "который", "которая", "которые", "заявил",
+        "заявила", "сообщил", "сообщила", "сообщает", "году", "года", "рублей", "млрд", "тыс", "впервые" };
+    std::vector<std::string> out;
+    for (const auto& word : textutil::words(text, 1)) {
+        const auto cps = textutil::decode(word);
+        std::string token;
+        size_t digits = 0;
+        for (uint32_t cp : cps) if (cp >= '0' && cp <= '9') ++digits;
+        if (digits == cps.size()) {
+            if (digits < 2) continue;
+            token = word;                                   // numbers like 27, 116 identify an event
+        } else {
+            if (cps.size() < 4 || std::find(stop.begin(), stop.end(), word) != stop.end()) continue;
+            for (size_t i = 0; i < cps.size() && i < 5; ++i) textutil::append_utf8(token, cps[i]);
+        }
+        if (std::find(out.begin(), out.end(), token) == out.end()) out.push_back(token);
+    }
+    return out;
+}
+
+bool overlaps(const std::vector<std::string>& a, const std::vector<std::string>& b) {
+    if (a.empty() || b.empty()) return false;
+    size_t common = 0;
+    for (const auto& x : a) if (std::find(b.begin(), b.end(), x) != b.end()) ++common;
+    return common >= 3 && static_cast<double>(common) >= 0.6 * static_cast<double>(std::min(a.size(), b.size()));
+}
+} // namespace
+
+namespace {
+struct StoryKey {
+    long long epoch = 0;
+    std::vector<std::string> title, lead;
+};
+
+StoryKey story_key(const NewsItem& item) {
+    return { item.published_epoch, story_tokens(item.title),
+             story_tokens(item.title + " " + textutil::truncate_utf8(item.summary, 320)) };
+}
+
+bool same_story(const StoryKey& a, const StoryKey& b) {
+    if (a.epoch <= 0 || b.epoch <= 0) return false;
+    if (std::llabs(a.epoch - b.epoch) > 36LL * 3600) return false;
+    return overlaps(a.title, b.title) || overlaps(a.lead, b.lead);
+}
+} // namespace
+
+bool same_story(const NewsItem& a, const NewsItem& b) { return same_story(story_key(a), story_key(b)); }
+
+namespace {
 // Another bank's own results (profit, loan book, reporting) are background for a corporate client,
 // not an event that changes the client's business, and a bank's product should not headline them.
 bool competitor_bank_results(const textutil::WordIndex& news) {
@@ -258,11 +309,32 @@ json::Value build_feed(const DataStore& data, const AnalyticsIndex& analytics, c
         ranked.push_back({ std::move(item), std::move(rel), rank });
     }
     std::stable_sort(ranked.begin(), ranked.end(), [](const Ranked& a, const Ranked& b) { return a.rank > b.rank; });
-    if (ranked.size() > limit) ranked.resize(limit);
+    // One card per event: retellings by other outlets are attached to the highest-ranked publication.
+    std::vector<Ranked> cards;
+    std::vector<StoryKey> card_keys;
+    std::vector<std::vector<const NewsItem*>> also(ranked.size());
+    for (auto& candidate : ranked) {
+        const StoryKey key = story_key(candidate.item);
+        bool attached = false;
+        for (size_t c = 0; c < cards.size() && !attached; ++c) {
+            if (same_story(card_keys[c], key)) { also[c].push_back(&candidate.item); attached = true; }
+        }
+        if (!attached && cards.size() < limit) { cards.push_back(candidate); card_keys.push_back(key); }
+    }
 
     json::Value items = json::Value::array();
-    for (auto& r : ranked) {
+    for (size_t c = 0; c < cards.size(); ++c) {
+        auto& r = cards[c];
         json::Value v = news_to_json(r.item);
+        v["also_reported"] = json::Value::array();
+        for (const NewsItem* other : also[c]) {
+            json::Value o = json::Value::object();
+            o["news_id"] = other->id;
+            o["source"] = other->source;
+            o["title"] = other->title;
+            o["url"] = other->url;
+            v["also_reported"].push_back(std::move(o));
+        }
         v["news_id"] = r.item.id;
         v["feed_rank"] = std::round(r.rank * 1000.0) / 1000.0;
         const auto& reasons = r.relevance.get("reasons").as_array();

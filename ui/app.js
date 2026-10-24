@@ -160,7 +160,7 @@ function renderMap() {
   const n = currentNews(); if (!n) return;
   $('node-title').textContent = n.title; $('node-copy').textContent = n.why_for_you || 'Причина релевантности не указана.';
   $('node-index').textContent = `${state.items.indexOf(n)+1} / ${state.items.length}`;
-  $('news-source').textContent = n.source || 'Источник не указан';
+  $('news-source').textContent = $('news-source').title = AlfaCore.sourceLine(n);
   $('news-reasons').replaceChildren(el('details',{},el('summary',{},'Все признаки релевантности'),el('ul',{},(n.relevance?.reasons || []).map(reason => el('li',{},reason)))));
   $('bank-hint').hidden = !n.bank_hint;
   if (n.bank_hint) $('bank-hint').replaceChildren(el('strong',{},'Материал Альфа-Банка'),el('p',{},n.bank_hint.title),el('small',{},'Связанный контекст, не позиция банка по событию'));

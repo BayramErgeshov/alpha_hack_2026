@@ -12,6 +12,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <chrono>
 #include <cstdlib>
 #include <algorithm>
 #include <memory>
@@ -461,6 +462,67 @@ TEST(relationships_and_counterparties_on_small_dataset) {
     CHECK(cps[3].company_id == "U_4" && cps[3].direction == "incoming");
     CHECK(ds.find("U_1")->payments_out == 450 && ds.find("U_1")->payments_in == 10);
     fs::remove_all(dir);
+}
+
+NewsItem story(const std::string& source, const std::string& title, const std::string& summary, long long epoch) {
+    NewsItem n;
+    n.source = source; n.title = title; n.summary = summary; n.url = "https://example.org/" + source + std::to_string(epoch) + title.substr(0, 8);
+    n.published_epoch = epoch;
+    n.categories = classify_news(title + " " + summary);
+    return n;
+}
+
+TEST(same_story_joins_retellings_and_keeps_distinct_events) {
+    const long long t = 1792800000;
+    const NewsItem iran_ved = story("Ведомости", "Президент Ирана поучаствует в саммите Форума стран – экспортеров газа 27 октября", "", t);
+    const NewsItem iran_kom = story("Коммерсантъ", "Президент Ирана Пезешкиан приедет в Москву на саммит газового форума",
+        "Президент Ирана Масуд Пезешкиан посетит Москву 27 октября для участия в восьмом саммите Форума стран — экспортеров газа.", t - 1500);
+    const NewsItem iran_tass = story("ТАСС", "Пезешкиан хочет укрепить энергетическое взаимодействие с РФ и странами ФСЭГ",
+        "Президент Ирана посетит саммит Форума стран - экспортеров газа, который пройдет в Москве", t - 1480);
+    const NewsItem mortgage_kom = story("Коммерсантъ", "Набиуллина выступила против увеличения объемов льготной ипотеки",
+        "Льготная ипотека в России должна быть ограничена, заявила глава Банка России Эльвира Набиуллина.", t);
+    const NewsItem mortgage_ved = story("Ведомости", "Набиуллина заявила о необходимости ограничить объемы льготной ипотеки", "", t - 1800);
+    const NewsItem aksakov = story("Ведомости", "Аксаков: основной потенциал снижения ключевой ставки реализуется в 2027 году", "", t);
+    const NewsItem shokhin = story("Ведомости", "Шохин: бизнес не ожидает снижения ключевой ставки ЦБ", "", t - 7200);
+    const NewsItem grushko = story("Коммерсантъ", "Грушко: России не важна личность переговорщика от Европы, главное — его позиция", "", t);
+    const NewsItem peskov = story("Ведомости", "Песков: переговоры с представителями Европы исключать нельзя", "", t - 3600);
+    CHECK(same_story(iran_ved, iran_kom));
+    CHECK(same_story(iran_ved, iran_tass));
+    CHECK(same_story(mortgage_kom, mortgage_ved));
+    CHECK(!same_story(aksakov, shokhin));
+    CHECK(!same_story(grushko, peskov));
+    CHECK(!same_story(iran_ved, mortgage_kom));
+    NewsItem iran_old = iran_kom; iran_old.published_epoch = t - 4 * 86400;
+    CHECK(!same_story(iran_ved, iran_old)); // a repeat of the topic days later is a new event
+}
+
+TEST(feed_shows_one_card_per_event_with_other_sources) {
+    const long long now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    NewsStore news;
+    news.add(story("Ведомости", "Президент Ирана поучаствует в саммите Форума стран – экспортеров газа 27 октября", "", now - 600));
+    news.add(story("Коммерсантъ", "Президент Ирана Пезешкиан приедет в Москву на саммит газового форума",
+        "Президент Ирана Масуд Пезешкиан посетит Москву 27 октября для участия в восьмом саммите Форума стран — экспортеров газа.", now - 2100));
+    news.add(story("ТАСС", "Пезешкиан хочет укрепить энергетическое взаимодействие с РФ и странами ФСЭГ",
+        "Президент Ирана посетит саммит Форума стран - экспортеров газа, который пройдет в Москве", now - 2080));
+    news.add(story("Коммерсантъ", "ЦБ повысил прогноз цены на нефть Urals до $72 за баррель в 2026 году",
+        "Банк России повысил прогноз цены на нефть марки Urals с $60 до $72 за баррель.", now - 3600));
+    news.add(story("Ведомости", "Цена газа в Европе выросла на фоне начала отопительного сезона", "", now - 4000));
+    CompanyProfile trader = profile("T_GAS", "Торговля оптовая твердым, жидким и газообразным топливом", true, true);
+    const json::Value feed = build_feed(store(), analytics(), news, trader, "treasurer", 3);
+    const auto& items = feed.get("items").as_array();
+    CHECK(items.size() == 3);
+    size_t iran_cards = 0, others_attached = 0;
+    for (const auto& item : items) {
+        if (item.get("title").as_string().find("Ирана") != std::string::npos ||
+            item.get("title").as_string().find("Пезешкиан") != std::string::npos) {
+            ++iran_cards;
+            others_attached = item.get("also_reported").as_array().size();
+        } else {
+            CHECK(item.get("also_reported").as_array().empty());
+        }
+    }
+    CHECK(iran_cards == 1);
+    CHECK(others_attached == 2);
 }
 
 int main(int argc, char** argv) { return run_all_tests(argc > 1 ? argv[1] : ""); }

@@ -25,3 +25,12 @@ test('all feed items remain reachable with an incomplete last page',()=>{
 test('scenario shortcut relies on API category, never guessed from title',()=>{
   assert.equal(isCurrency({categories:['currency']}),true);assert.equal(isCurrency({title:'Доллар'}),false);assert.equal(isCurrency(null),false);
 });
+test('other outlets of the same event are summarised in plain Russian',()=>{
+  const {sourceLine}=require('../../ui/core.js');
+  assert.equal(sourceLine({source:'Ведомости'}),'Ведомости');
+  assert.equal(sourceLine({source:'Ведомости',also_reported:[]}),'Ведомости');
+  assert.equal(sourceLine({source:'Ведомости',also_reported:[{source:'ТАСС'}]}),'Ведомости · ещё 1 источник: ТАСС');
+  assert.equal(sourceLine({source:'Ведомости',also_reported:[{source:'ТАСС'},{source:'Коммерсантъ'}]}),'Ведомости · ещё 2 источника: ТАСС, Коммерсантъ');
+  assert.equal(sourceLine({source:'РБК',also_reported:[{source:'ТАСС'},{source:'ТАСС'},{source:'А'},{source:'Б'},{source:'В'}]}),'РБК · ещё 5 источников: ТАСС, А, Б, В');
+  assert.equal(sourceLine({}),'Источник не указан');
+});

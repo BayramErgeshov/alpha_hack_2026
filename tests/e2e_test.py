@@ -185,6 +185,9 @@ def agent_happy_path_uses_three_models():
         assert insight["interpretation"]["bank_position"] is not None, insight["interpretation"]
         assert insight["role"]["id"] == "cfo"
         assert insight["quality_check"]["claims_supported"] >= 1
+        interp = insight["interpretation"]
+        assert any(c.get("uses_bank_material") for c in interp["opportunities"]), interp["opportunities"]
+        assert not any(c.get("uses_bank_material") for c in interp["risks"]), interp["risks"]
         roles = {c["role"]: c["model"] for c in calls(log)}
         assert roles.get("planner") == "google/gemma-4-26b-a4b-it", roles
         assert roles.get("analyst") == "deepseek/deepseek-v4.1-flash", roles
@@ -260,6 +263,23 @@ def reviewer_failure_is_visible_in_trace():
         assert verify["detail"]["reviewer_status"] == "fallback", verify
         assert "token limit" in verify["detail"]["reviewer_error"], verify
         assert "рецензент" in verify["decision"], verify["decision"]
+    finally:
+        srv.stop()
+        proc.terminate()
+
+
+@test
+def bank_materials_are_named_when_bank_has_no_direct_position():
+    srv, proc, log = mock_server("no_bank_view")
+    try:
+        company, news_id, _ = borrower_and_rate_news(srv)
+        status, insight, _ = srv.post("/api/v1/insights", {"company_id": company, "news_id": news_id})
+        assert status == 200, insight
+        interp = insight["interpretation"]
+        assert interp["bank_position"] is None, interp["bank_position"]
+        used = interp["bank_materials_used"]
+        sources = {s["id"]: s for s in insight["sources"]}
+        assert used and all(u["id"].startswith("A") and u["id"] in sources and u["title"] for u in used), used
     finally:
         srv.stop()
         proc.terminate()

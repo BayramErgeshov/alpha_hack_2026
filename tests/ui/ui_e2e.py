@@ -71,6 +71,7 @@ def main():
                 check(f"insight shows '{label}'", label in text)
             check("AI conclusions are labelled", page.locator("#insight .label.ai").count() >= 2)
             check("evidence links present", page.locator("#insight .ev").count() >= 3)
+            check("conclusions based on bank analytics are marked", page.locator("#insight .bank-basis").count() >= 1)
 
             page.click("text=Подробнее о рисках")
             page.wait_for_selector("#answers .answer b", timeout=20000)

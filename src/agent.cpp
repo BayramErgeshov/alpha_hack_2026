@@ -839,6 +839,40 @@ json::Value InsightAgent::analyze(const std::string& company_id, const ArticleIn
     interpretation["bank_position"] = std::move(bank_view);
     interpretation["model_conclusions"] = std::move(model_conclusions);
     interpretation["uncertainties"] = std::move(uncertainties);
+    {
+        // Make the bank's share in the conclusions visible: a claim citing an A-source rests on
+        // Alfa-Bank analytics, and the materials used are named even when the bank has no direct
+        // position on this event (bank_position stays null in that case).
+        std::vector<std::string> bank_ids;
+        const auto note_bank_ids = [&](const json::Value& ids) {
+            bool any = false;
+            if (!ids.is_array()) return any;
+            for (const auto& id : ids.as_array()) {
+                if (!id.is_string() || id.as_string().rfind("A", 0) != 0) continue;
+                any = true;
+                if (std::find(bank_ids.begin(), bank_ids.end(), id.as_string()) == bank_ids.end()) bank_ids.push_back(id.as_string());
+            }
+            return any;
+        };
+        note_bank_ids(interpretation.get("why_it_matters_evidence_ids"));
+        for (const char* section : { "potential_effects", "risks", "opportunities", "possible_actions", "model_conclusions" }) {
+            if (!interpretation.get(section).is_array()) continue;
+            for (auto& c : interpretation[section].as_array())
+                if (c.is_object()) c["uses_bank_material"] = note_bank_ids(c.get("evidence_ids"));
+        }
+        json::Value used = json::Value::array();
+        for (const auto& id : bank_ids) {
+            for (const auto& s : sources.as_array()) {
+                if (s.get("id").as_string() != id) continue;
+                json::Value u = json::Value::object();
+                u["id"] = id;
+                u["title"] = s.get("title").is_string() ? s.get("title") : s.get("document");
+                u["page"] = s.get("page");
+                used.push_back(std::move(u));
+            }
+        }
+        interpretation["bank_materials_used"] = std::move(used);
+    }
 
     json::Value quality = json::Value::object();
     quality["source_linked"] = true;

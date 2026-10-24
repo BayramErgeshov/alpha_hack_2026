@@ -42,3 +42,4 @@ main{min-height:calc(100vh - 190px)}.map-layout{padding-top:24px}.map-heading p{
 .brief-aside .text-link{font-size:11px}.bank-strip p{line-height:1.5}
 .deck-item[aria-disabled=true]{opacity:.8;cursor:default}
 @media(max-width:760px){#home-entry h2{width:auto}.fan{display:none}#home-entry>p{max-width:none}}
+.ev.bank-basis{color:#a43329}

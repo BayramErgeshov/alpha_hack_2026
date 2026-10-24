@@ -9,7 +9,7 @@ Like the real gateway's reasoning models (DeepSeek V4.1 Flash, GLM-5.3-Flash), t
 whole max_tokens budget on hidden reasoning and returns empty content with finish_reason "length"
 unless the request disables reasoning with {"reasoning": {"enabled": false}}.
 
-Scenarios (MOCK_SCENARIO): happy | revise | broken | truncated (analyst reply cut at max_tokens) | review_cut (reviewer reply cut). Every call is appended to
+Scenarios (MOCK_SCENARIO): happy | revise | broken | truncated (analyst reply cut at max_tokens) | review_cut (reviewer reply cut) | no_bank_view (claims cite bank materials, no bank position). Every call is appended to
 MOCK_LOG as one JSON line {role, model} so tests can assert which models were used.
 """
 import json
@@ -53,13 +53,13 @@ def answer(role, user):
         return json.dumps({"answer": "**Ликвидность**: для казначея главный риск — стоимость рефинансирования.",
                            "evidence_ids": ["N1", "C1"]}, ensure_ascii=False)
     revised = "previous_draft" in user
-    bank_view = {"text": "Альфа-Банк ожидает сохранения жёсткой политики", "evidence_ids": [bank[-1]]} if bank and (SCENARIO != "revise" or revised) else None
+    bank_view = {"text": "Альфа-Банк ожидает сохранения жёсткой политики", "evidence_ids": [bank[-1]]} if bank and (SCENARIO != "revise" or revised) and SCENARIO != "no_bank_view" else None
     return json.dumps({
         "what_happened": {"text": "Банк России сохранил ключевую ставку.", "evidence_ids": ["N1"]},
         "why_it_matters": {"text": "У компании есть кредиты, поэтому стоимость долга остаётся высокой.", "evidence_ids": ["N1", "C1"]},
         "potential_effects": [{"text": "Процентные расходы не снизятся в ближайшие кварталы.", "evidence_ids": ["N1", "C1"], "horizon": "3-6 месяцев"}],
         "risks": [{"text": "Рефинансирование долга останется дорогим.", "evidence_ids": ["N1", "C1"], "confidence": 0.7}],
-        "opportunities": [{"text": "Зафиксировать ставку по новым кредитам.", "evidence_ids": ["N1"]}],
+        "opportunities": [{"text": "Зафиксировать ставку по новым кредитам.", "evidence_ids": ["N1"] + bank[:1]}],
         "actions": [{"text": "Пересчитать стресс-сценарий по долгу.", "evidence_ids": ["C1"]}],
         "bank_view": bank_view,
         "model_conclusions": [{"text": "Эффект зависит от доли плавающих ставок.", "evidence_ids": ["C1"]}],

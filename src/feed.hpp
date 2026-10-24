@@ -31,5 +31,10 @@ json::Value score_relevance(const CompanyProfile& company, const std::string& ti
 // Known gaps in the company profile that limit personalization (human-readable).
 std::vector<std::string> profile_gaps(const CompanyProfile& company);
 
+// Two publications about the same event (retellings by different outlets within 36 hours).
+// Shared significant word stems: >= 3 and >= 60% of the shorter text, in the titles or in
+// title + lead. Calibrated on the live feed: joins retellings, keeps related-but-different news apart.
+bool same_story(const NewsItem& a, const NewsItem& b);
+
 json::Value build_feed(const DataStore& data, const AnalyticsIndex& analytics, const NewsStore& news,
     const CompanyProfile& company, const std::string& role_id, size_t limit);
