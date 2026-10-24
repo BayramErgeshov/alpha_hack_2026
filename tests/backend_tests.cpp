@@ -13,6 +13,7 @@
 #include <filesystem>
 #include <fstream>
 #include <chrono>
+#include <cstdio>
 #include <cstdlib>
 #include <algorithm>
 #include <memory>
@@ -530,6 +531,40 @@ TEST(feed_shows_one_card_per_event_with_other_sources) {
     }
     CHECK(iran_cards == 1);
     CHECK(others_attached == 2);
+}
+
+TEST(story_rarity_uses_the_recent_window_not_the_whole_archive) {
+    // Calibrated on the 500 most recent news: words that were frequent days ago in the archive
+    // must not stop today's retellings from being joined as the store grows.
+    const long long now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    NewsStore news;
+    const char* syllables[] = { "ба", "ве", "ги", "до", "жу", "зы", "ко", "ла" };
+    for (int i = 0; i < 40; ++i) {
+        // distinct words so the store does not merge the archive items into one
+        const std::string w1 = std::string(syllables[i % 8]) + syllables[(i / 8) % 8] + "рмант";
+        const std::string w2 = std::string(syllables[(i + 3) % 8]) + syllables[(i / 8 + 5) % 8] + "лонск";
+        news.add(story("Архив", "Набиуллина: льготная ипотека, объемы и " + w1 + " " + w2, "", now - 20 * 86400 - i * 600));
+    }
+    for (int i = 0; i < 520; ++i) {
+        const std::string a = std::string(syllables[i % 8]) + syllables[(i / 8) % 8] + syllables[(i / 64) % 8] + "стор";
+        const std::string b = std::string(syllables[(i + 1) % 8]) + syllables[(i / 8 + 2) % 8] + syllables[(i / 64 + 4) % 8] + "мир";
+        const std::string c = std::string(syllables[(i + 5) % 8]) + syllables[(i / 8 + 6) % 8] + syllables[(i / 64 + 1) % 8] + "град";
+        news.add(story("Лента", a + " " + b + " " + c, "", now - 3 * 86400 - i * 60));
+    }
+    news.add(story("Коммерсантъ", "Набиуллина выступила против увеличения объемов льготной ипотеки",
+        "Льготная ипотека в России должна быть ограничена, заявила глава Банка России Эльвира Набиуллина.", now - 600));
+    news.add(story("Ведомости", "Набиуллина заявила о необходимости ограничить объемы льготной ипотеки", "", now - 2400));
+    CompanyProfile builder = profile("T_HOUSE", "Строительство жилых и нежилых зданий", true, false);
+    const json::Value feed = build_feed(store(), analytics(), news, builder, "ceo", 5);
+    size_t cards = 0, attached = 0;
+    for (const auto& item : feed.get("items").as_array()) {
+        if (item.get("source").as_string() == "Архив") continue;
+        if (item.get("title").as_string().find("льготн") == std::string::npos) continue;
+        ++cards;
+        attached += item.get("also_reported").as_array().size();
+    }
+    CHECK(cards == 1);
+    CHECK(attached == 1);
 }
 
 int main(int argc, char** argv) { return run_all_tests(argc > 1 ? argv[1] : ""); }

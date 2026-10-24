@@ -34,7 +34,8 @@ std::vector<std::string> profile_gaps(const CompanyProfile& company);
 // Two publications about the same event (retellings by different outlets within 36 hours).
 // Shared word stems: >= 3 and >= 60% of the shorter text, and the shared words must be rare in the
 // current news corpus — titles need one stem found in <= 2 news, title + lead need two stems found in
-// <= 3 news. Common words ("прибыль упала", "аэропорт ограничил") alone never join two events.
+// <= 3 news. Rarity is counted over `corpus`; the feed passes its 500 most recent news.
+// Common words ("прибыль упала", "аэропорт ограничил") alone never join two events.
 // Calibrated on the live feed (500 news): joins retellings, keeps related-but-different news apart.
 bool same_story(const NewsItem& a, const NewsItem& b, const std::vector<NewsItem>& corpus);
 

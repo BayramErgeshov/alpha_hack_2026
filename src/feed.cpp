@@ -138,6 +138,7 @@ std::vector<std::string> story_tokens(const std::string& text) {
     return out;
 }
 
+constexpr size_t kRarityWindow = 500;
 using StoryRarity = std::unordered_map<std::string, int>; // stem -> number of news whose title + lead contain it
 
 struct StoryKey {
@@ -326,12 +327,16 @@ json::Value build_feed(const DataStore& data, const AnalyticsIndex& analytics, c
         const double rank = rel.get("score").as_number() * (0.55 + 0.45 * fresh);
         ranked.push_back({ std::move(item), std::move(rel), rank });
     }
+    // Word rarity is measured on the 500 most recent news (ranked is still in recency order here):
+    // the window the rule was calibrated on, so it does not drift as the archive grows.
+    std::vector<StoryKey> recent_keys;
+    for (size_t i = 0; i < ranked.size() && i < kRarityWindow; ++i) recent_keys.push_back(story_key(ranked[i].item));
+    const StoryRarity rarity = story_rarity(recent_keys);
     std::stable_sort(ranked.begin(), ranked.end(), [](const Ranked& a, const Ranked& b) { return a.rank > b.rank; });
     // One card per event: retellings by other outlets are attached to the highest-ranked publication.
     std::vector<StoryKey> keys;
     keys.reserve(ranked.size());
     for (const auto& r : ranked) keys.push_back(story_key(r.item));
-    const StoryRarity rarity = story_rarity(keys);
     std::vector<Ranked> cards;
     std::vector<size_t> card_index;
     std::vector<std::vector<const NewsItem*>> also(ranked.size());
