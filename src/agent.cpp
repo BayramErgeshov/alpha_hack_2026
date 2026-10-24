@@ -229,6 +229,14 @@ std::string planner_prompt() {
         "\"need_counterparties\":true,\"need_related_news\":true}.";
 }
 
+// The UI renders model text as plain text, so markdown emphasis would show as literal asterisks.
+std::string plain_text(std::string text) {
+    for (const char* mark : { "**", "__" }) {
+        for (size_t pos = text.find(mark); pos != std::string::npos; pos = text.find(mark, pos)) text.erase(pos, 2);
+    }
+    return text;
+}
+
 double billions(double rub) { return std::round(rub / 1e8) / 10.0; } // 62340483339 -> 62.3
 
 // A full analysis in Russian is ~1500-2500 tokens of JSON; 1800 cut real DeepSeek replies mid-document.
@@ -268,7 +276,7 @@ std::string reviewer_prompt() {
 std::string followup_prompt() {
     return std::string("Роль агента: уточнение. Ответь на вопрос руководителя только по сохранённому разбору и его источникам. ") + kUntrusted +
         " Если источников недостаточно, прямо скажи об этом. Учитывай роль пользователя. Ответ — до 120 слов, только JSON. "
-        "Структура: {\"answer\":\"...\",\"evidence_ids\":[\"N1\"]}.";
+        "Пиши обычным текстом без markdown. Структура: {\"answer\":\"...\",\"evidence_ids\":[\"N1\"]}.";
 }
 
 std::string lens_question(const std::string& lens) {
@@ -971,7 +979,7 @@ json::Value InsightAgent::follow_up(const std::string& insight_id, const std::st
         try {
             const auto parsed = parse_model_json(reply.content);
             if (!parsed.is_object() || json_string(parsed.get("answer")).empty()) throw std::runtime_error("no answer");
-            response["answer"] = shorten(json_string(parsed.get("answer")), 2500);
+            response["answer"] = shorten(plain_text(json_string(parsed.get("answer"))), 2500);
             response["evidence_ids"] = evidence_list(parsed.get("evidence_ids"), ids);
             response["method"] = "allowlisted_llm";
             response["model"] = llm_.fast_model;

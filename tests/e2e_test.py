@@ -195,6 +195,7 @@ def agent_happy_path_uses_three_models():
         assert len(calls(log)) == before, "cached insight must not call the model"
         status, answer, _ = srv.post("/api/v1/insights/%s/questions" % insight["id"], {"lens": "treasury"})
         assert status == 200 and answer["answer"], answer
+        assert "**" not in answer["answer"] and answer["answer"].startswith("Ликвидность"), answer["answer"]
     finally:
         srv.stop()
         proc.terminate()

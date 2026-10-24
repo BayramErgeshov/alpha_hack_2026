@@ -50,7 +50,7 @@ def answer(role, user):
                                "additional_queries": ["ставка без изменения риторика жестче"]}, ensure_ascii=False)
         return json.dumps({"verdict": "ok", "issues": [], "additional_queries": []})
     if role == "followup":
-        return json.dumps({"answer": "Для казначея главный риск — стоимость рефинансирования.",
+        return json.dumps({"answer": "**Ликвидность**: для казначея главный риск — стоимость рефинансирования.",
                            "evidence_ids": ["N1", "C1"]}, ensure_ascii=False)
     revised = "previous_draft" in user
     bank_view = {"text": "Альфа-Банк ожидает сохранения жёсткой политики", "evidence_ids": [bank[-1]]} if bank and (SCENARIO != "revise" or revised) else None
